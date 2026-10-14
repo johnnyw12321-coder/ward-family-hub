@@ -29,7 +29,7 @@ export function LoginForm({ next, linkError }: { next: string; linkError: boolea
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input id="email" name="email" type="email" autoComplete="username" inputMode="email" required autoFocus />
+          <Input id="email" name="email" type="email" autoComplete="username" inputMode="email" required autoFocus defaultValue={state?.email} key={state?.email} />
         </Field>
         <Field>
           <div className="flex items-center justify-between">

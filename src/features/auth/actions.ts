@@ -7,7 +7,7 @@ import { logServerError } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "./safe-redirect";
 
-export type AuthFormState = { error?: string; message?: string; fieldErrors?: Record<string, string> } | null;
+export type AuthFormState = { error?: string; message?: string; email?: string; fieldErrors?: Record<string, string> } | null;
 
 const signInSchema = z.object({
   email: z.email("Enter your email address").max(254),
@@ -21,7 +21,8 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
     password: formData.get("password"),
     next: formData.get("next") ?? undefined,
   });
-  if (!parsed.success) return { error: "Enter your email and password." };
+  if (!parsed.success) return { error: "Enter your email and password.", email: String(formData.get("email") ?? "") };
+  const email = parsed.data.email;
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
@@ -30,8 +31,12 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
   });
   if (error) {
     // Do not reveal whether the account exists.
-    if (error.status === 429) return { error: "Too many attempts. Please wait a few minutes and try again." };
-    return { error: "That email and password combination didn't work." };
+    if (error.status === 429) return { error: "Too many attempts. Please wait a few minutes and try again.", email };
+    if (!error.status || error.status >= 500) {
+      logServerError("signIn", error);
+      return { error: "We couldn't reach the sign-in service. Check your connection and try again.", email };
+    }
+    return { error: "That email and password combination didn't work.", email };
   }
   redirect(safeNextPath(parsed.data.next));
 }
