@@ -130,6 +130,22 @@ recurring event is recorded in `event_completions`. `external_source /
 external_id / external_etag` columns reserve space for a later Google Calendar
 sync without schema changes.
 
+## Document vault
+
+`documents` (metadata) → `document_files` (immutable versions) →
+Storage object `{household}/{document}/{file}`. Upload is three steps so large
+files never pass through a Vercel function (4.5 MB body limit):
+
+1. `startUpload` (server) checks the document is visible and writable, picks the
+   path, and returns a signed upload URL.
+2. The browser uploads directly to Storage (bucket enforces size and declared type).
+3. `finishUpload` (server) downloads the object, sniffs the real type, hashes it,
+   records the version and makes it current — or deletes it.
+
+Sensitive documents are filtered by RESTRICTIVE RLS requiring `aal2`, so the
+same queries simply return fewer rows until the session is verified at
+`/verify` (TOTP via Supabase Auth MFA).
+
 ## PWA and offline
 
 `app/manifest.ts` + PNG/maskable icons make the app installable. `public/sw.js`

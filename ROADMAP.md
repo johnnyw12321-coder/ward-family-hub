@@ -3,8 +3,8 @@
 Status key: ✅ built and covered by automated tests · 🟡 built, needs end-to-end
 verification against a live Supabase project · ⬜ not started
 
-> **Overall:** Phases 1–3 are built. Typecheck, lint, the production build and
-> 136 automated tests pass. **No phase has been verified end-to-end in a browser
+> **Overall:** Phases 1–4 are built. Typecheck, lint, the production build and
+> 151 automated tests pass. **No phase has been verified end-to-end in a browser
 > against real Supabase yet** — that requires your Supabase project (or the
 > local Docker stack) and is the next step. Until then every UI feature is 🟡.
 
@@ -40,14 +40,17 @@ verification against a live Supabase project · ⬜ not started
 - 🟡 Shopping: shared lists, quantities and estimated prices, check-off, clear/uncheck, reusable lists
 - 🟡 In-app notifications: bills, tasks, events (honouring reminders), goals, milestones, budgets; per-person and private; idempotent
 
-## Phase 4 — Document vault ⬜
+## Phase 4 — Document vault ✅🟡
 
-Private Storage bucket with household-scoped storage policies; server-side
-type/size validation and content sniffing; short-lived signed URLs; categories,
-tags, issue/expiry dates, associations (member, asset, account); preview,
-download, replace (versioned), archive; expiry reminders; TOTP two-factor and
-AAL2 step-up enforced by RLS for sensitive documents; receipt attachments on
-transactions; bucket backup.
+- ✅ Private bucket, household-scoped storage policies, immutable versioned files (tested)
+- ✅ Sensitive documents gated by two-factor (AAL2) in RLS, including storage objects (tested)
+- ✅ Server-side validation: content sniffing, type match, size limit, SHA-256 (tested)
+- 🟡 Upload (choose file or take photo), categories, tags, issue/expiry dates, belongs-to, links to accounts/bills/goals/transactions
+- 🟡 Search and category filters, needs-attention list, archive, permanent delete
+- 🟡 Preview (images), open/download via 60-second links, replace with version history
+- 🟡 TOTP setup in Settings, per-session verification page, turn off
+- 🟡 Receipts on transactions; documents on bills and accounts; expiry dates on the calendar; expiry notifications
+- ✅ Owner-run backup downloads every stored file
 
 ## Phase 5 — Assets and family ⬜
 

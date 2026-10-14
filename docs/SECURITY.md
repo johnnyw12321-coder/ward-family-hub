@@ -44,6 +44,31 @@ signed-in user; the app never uses the service-role key.
 - All views are `security_invoker`; no SECURITY DEFINER function is exposed in
   the `public` (API) schema.
 
+## Document vault
+
+- Files live in the private `documents` bucket at
+  `{household_id}/{document_id}/{file_id}`; the server chooses every path.
+- Storage policies allow upload, read (signed URLs) and delete only for objects
+  inside a document the caller can see in their own household; malformed or
+  foreign paths are rejected. Objects are never updated in place.
+- **Sensitive documents** (passports, IDs, medical, banking, legal, taxes…) are
+  protected by RESTRICTIVE RLS policies that require the session's JWT to be at
+  `aal2` (two-factor verified) — for the metadata, the file records and the
+  storage objects, so signed links can't be created without step-up. Expiry
+  notifications for sensitive documents never include their names.
+- Two-factor uses Supabase Auth TOTP (authenticator apps). Verification is per
+  session; turning it off requires a verified session.
+- **Upload validation on the server:** the browser uploads directly to Storage
+  with a short-lived signed upload URL (bucket limits: 25 MB, PDF/JPEG/PNG/WebP/HEIC),
+  then the server downloads the stored object, checks its real type from its
+  leading bytes (SVG, HTML, Office files and executables are refused), rejects
+  mismatched declared types, records size and SHA-256, and deletes anything that
+  fails.
+- Links to files are created on demand, valid for 60 seconds (image previews:
+  120 seconds), and never routed through the image optimiser or cached by the
+  service worker.
+- Document auditing is redacted (changed field names only, no values).
+
 ## Integrity and audit
 
 - Money is integer minor units; ledger rules are enforced by deferred
@@ -84,7 +109,7 @@ signed-in user; the app never uses the service-role key.
 
 ## What is tested
 
-`npm test` (136 tests) includes, against real PostgreSQL (PGlite) with Supabase's
+`npm test` (151 tests) includes, against real PostgreSQL (PGlite) with Supabase's
 roles and default grants recreated:
 
 - every public table has RLS enabled; every view is `security_invoker`; no
@@ -99,6 +124,14 @@ roles and default grants recreated:
   audit entries or spoof `created_by`
 - notifications are private to each member; only read/dismissed state is writable;
   generation is idempotent and does nothing for viewers or outsiders
+- documents: shared within the household only; sensitive documents, their file
+  records and their storage objects are invisible and unchangeable without aal2;
+  a session without two-factor can't mark a document sensitive; uploads outside
+  the caller's household/document, malformed paths and read-only members are
+  refused; file records are tied to their path and immutable; disallowed MIME
+  types are rejected; expiry notifications don't reveal sensitive names
+- file validation: magic-byte sniffing (including disguised SVG/HTML/EXE/ZIP),
+  filename sanitising, hashing
 - ledger: balances, credit-card double counting, refunds, transfer balancing,
   validation errors, atomic edits, timezone-local dates, report classification,
   reconciliation, budget attribution and carry-forward, recurrence and bill
@@ -128,5 +161,5 @@ next verification step:
   Archive instead of rename if the old label matters.
 - `npm audit` reports a high-severity advisory in a dev-only ESLint dependency
   (`braces` via `eslint-config-next`); it does not ship to the browser or server.
-- Two-factor authentication and step-up verification for sensitive documents are
-  planned with the document vault (Phase 4).
+- Two-factor is optional for signing in; it is required (per session) only to
+  add, open or change sensitive documents.

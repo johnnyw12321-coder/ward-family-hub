@@ -18,8 +18,8 @@ Three layers, from most to least automatic.
 npm run backup
 ```
 
-Writes `backups/ward-hub-<timestamp>.json` with every household table
-(git-ignored). It uses the service-role key, so run it only on a trusted
+Writes `backups/ward-hub-<timestamp>/data.json` with every household table and
+`files/` with every stored document file (git-ignored). It uses the service-role key, so run it only on a trusted
 computer. Store the file encrypted (e.g. an encrypted disk image, or attached to
 a secure note in a password manager), and keep at least one copy off the computer.
 
@@ -54,11 +54,15 @@ with tables listed parents-first. Amounts are integer cents.
 A scripted restore tool is on the roadmap; until then, do restores carefully and
 test them on a separate project first.
 
-## Documents (Phase 4)
+## Documents
 
-Uploaded documents will live in a private Storage bucket. Backups of files are
-separate from the database: the backup script will be extended to download the
-bucket, and the restore steps to upload it.
+Files live in the private `documents` Storage bucket, which Supabase's database
+backups **do not include**. `npm run backup` downloads every file into
+`files/<household>/<document>/<file>`. To restore, upload each file back to the
+same path in the new project's `documents` bucket (service role), after
+restoring the `documents` and `document_files` rows. The in-app JSON export
+includes document metadata only (and sensitive documents only from a
+two-factor-verified session).
 
 ## What is never backed up by the app
 
