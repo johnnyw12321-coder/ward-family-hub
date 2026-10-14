@@ -56,6 +56,8 @@ export async function saveDocument(raw: unknown): Promise<ActionResult<{ id: str
     transaction_id: empty(v.transactionId),
     recurring_id: empty(v.recurringId),
     goal_id: empty(v.goalId),
+    asset_id: empty(v.assetId),
+    family_member_id: empty(v.familyMemberId),
   };
 
   if (v.id) {

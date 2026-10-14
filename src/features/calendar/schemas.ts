@@ -31,6 +31,8 @@ export const eventSchema = z
     schedule: z.union([z.literal(""), z.string().regex(/^(weekly|monthly|yearly)-\d{1,2}$/)]),
     until: z.union([date, z.literal("")]).optional(),
     reminders: z.array(z.number().int().refine((n) => REMINDER_OPTIONS.some((r) => r.value === n))).max(5),
+    familyMemberId: z.union([z.uuid(), z.literal("")]).optional(),
+    assetId: z.union([z.uuid(), z.literal("")]).optional(),
   })
   .superRefine((v, ctx) => {
     if (!v.allDay) {

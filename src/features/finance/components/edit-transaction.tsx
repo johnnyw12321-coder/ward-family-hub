@@ -5,12 +5,13 @@ import { PencilIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TransactionInput } from "../schemas";
 import type { Category } from "../types";
-import { TransactionForm, type AccountOption, type MemberOption } from "./transaction-form";
+import { TransactionForm, type AccountOption, type MemberOption, type RelatedOptions } from "./transaction-form";
 
 export function EditTransaction({
   accounts,
   categories,
   members,
+  related,
   meId,
   currency,
   initial,
@@ -18,6 +19,7 @@ export function EditTransaction({
   accounts: AccountOption[];
   categories: Category[];
   members: MemberOption[];
+  related: RelatedOptions;
   meId: string;
   currency: string;
   initial: TransactionInput;
@@ -42,6 +44,7 @@ export function EditTransaction({
         accounts={accounts}
         categories={categories}
         members={members}
+        related={related}
         meId={meId}
         today={initial.date}
         nowTime={initial.time}

@@ -7,6 +7,7 @@ import { ConfirmAction } from "@/components/shared/confirm-action";
 import { Money } from "@/components/shared/money";
 import { PageHeader } from "@/components/shared/page-header";
 import { CardSkeleton } from "@/components/shared/skeletons";
+import { getAboutOptions } from "@/features/calendar/about-options";
 import { LinkedDocuments } from "@/features/documents/components/linked-documents";
 import { deleteTransaction } from "@/features/finance/actions";
 import { EditTransaction } from "@/features/finance/components/edit-transaction";
@@ -34,10 +35,11 @@ async function TransactionDetail({ params }: { params: PageProps<"/finances/tran
   const ctx = await requireHousehold();
   const tx = await getTransaction(ctx, id);
   if (!tx) notFound();
-  const [accounts, categories, group] = await Promise.all([
+  const [accounts, categories, group, related] = await Promise.all([
     getAccounts(ctx, { includeArchived: true }),
     getCategories(ctx, { includeArchived: true }),
     tx.group_id ? getGroupTransactions(ctx, tx.group_id) : Promise.resolve([]),
+    getAboutOptions(ctx),
   ]);
   const tz = ctx.household.timezone;
   const editable = ctx.canWrite && (tx.kind === "expense" || tx.kind === "income" || tx.kind === "transfer");
@@ -52,6 +54,7 @@ async function TransactionDetail({ params }: { params: PageProps<"/finances/tran
     ["Merchant", tx.merchant],
     ["Payment method", tx.payment_method ? PAYMENT_METHOD_LABELS[tx.payment_method] : null],
     ["Person", memberName(ctx.members, tx.person_user_id)],
+    ["For", [related.assets.find((a) => a.id === tx.asset_id)?.name, related.familyMembers.find((m) => m.id === tx.family_member_id)?.name].filter(Boolean).join(" · ") || null],
     ["Notes", tx.notes],
   ];
 
@@ -117,6 +120,7 @@ async function TransactionDetail({ params }: { params: PageProps<"/finances/tran
           accounts={accounts.filter((a) => !a.is_archived || a.id === tx.account_id || a.id === tx.to_account_id).map((a) => ({ id: a.id, name: a.name, type: a.type, currency: a.currency }))}
           categories={categories}
           members={ctx.members.map((m) => ({ user_id: m.user_id, display_name: m.display_name }))}
+          related={related}
           meId={ctx.userId}
           currency={tx.currency}
           initial={{
@@ -134,6 +138,8 @@ async function TransactionDetail({ params }: { params: PageProps<"/finances/tran
             merchant: tx.merchant ?? "",
             notes: tx.notes ?? "",
             isRefund: tx.kind === "expense" && tx.signed_amount_minor > 0,
+            assetId: tx.asset_id ?? "",
+            familyMemberId: tx.family_member_id ?? "",
           }}
         />
       ) : null}

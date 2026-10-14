@@ -195,8 +195,8 @@ export function NetWorthChart({ data, height = 200 }: { data: NetWorthPoint[]; h
       </div>
       {last ? (
         <figcaption className="mt-1 text-xs text-muted-foreground">
-          {monthLabel(last.month)}: <span className="font-medium text-foreground">{formatMoney(last.net)}</span> (accounts
-          only{" "}— property and vehicle values join when the asset register ships)
+          {monthLabel(last.month)}: <span className="font-medium text-foreground">{formatMoney(last.net)}</span> — accounts plus
+          the latest valuations of your home and vehicles
         </figcaption>
       ) : null}
       <TableToggle>

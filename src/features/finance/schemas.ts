@@ -56,6 +56,8 @@ export const transactionSchema = z
     merchant: optionalText(120),
     notes: optionalText(2000),
     isRefund: z.boolean().optional(),
+    assetId: optionalUuid,
+    familyMemberId: optionalUuid,
   })
   .superRefine((v, ctx) => {
     if (v.kind === "transfer") {
@@ -179,6 +181,8 @@ export const transactionFiltersSchema = z.object({
   account: z.uuid().optional().catch(undefined),
   category: z.uuid().optional().catch(undefined),
   person: z.uuid().optional().catch(undefined),
+  asset: z.uuid().optional().catch(undefined),
+  member: z.uuid().optional().catch(undefined),
   from: calendarDate.optional().catch(undefined),
   to: calendarDate.optional().catch(undefined),
   page: z.coerce.number().int().min(1).max(10_000).optional().catch(undefined),

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { DownloadIcon } from "lucide-react";
 import { cn } from "cn";
@@ -53,7 +54,7 @@ async function Report({ searchParams }: { searchParams: SP }) {
   const sp = Object.fromEntries(Object.entries(await searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])) as Record<string, string | undefined>;
   const ctx = await requireHousehold();
   const period = resolvePeriod(sp, ctx.today);
-  const { summary, previous, comparison, income, monthly, history } = await loadReport(ctx, period);
+  const { summary, previous, comparison, income, monthly, history, assetCosts } = await loadReport(ctx, period);
   const net = surplus(summary);
   const prevNet = surplus(previous);
   const rate = savingsRate(summary);
@@ -229,9 +230,46 @@ async function Report({ searchParams }: { searchParams: SP }) {
         </section>
       ) : null}
 
+      {assetCosts.length ? (
+        <section className="overflow-x-auto rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
+          <h2 className="mb-1 text-sm font-semibold">Home & vehicle costs</h2>
+          <p className="mb-3 text-xs text-muted-foreground">Expenses linked to each home or vehicle, plus costs logged on maintenance records only.</p>
+          <table className="w-full min-w-[360px] text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="py-1 text-left font-medium" />
+                <th className="py-1 text-right font-medium">In accounts</th>
+                <th className="py-1 text-right font-medium">Logged only</th>
+                <th className="py-1 text-right font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody className="tabular">
+              {assetCosts.map((a) => (
+                <tr key={a.id} className="border-t">
+                  <td className="py-2">
+                    <Link href={`/${a.type === "vehicle" ? "vehicles" : "property"}/${a.id}`} className="text-primary">
+                      {a.name}
+                    </Link>
+                  </td>
+                  <td className="py-2 text-right">
+                    <Money minor={a.ledger} />
+                  </td>
+                  <td className="py-2 text-right text-muted-foreground">
+                    <Money minor={a.logged} />
+                  </td>
+                  <td className="py-2 text-right font-medium">
+                    <Money minor={a.ledger + a.logged} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
       <section className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
         <h2 className="mb-3 text-sm font-semibold">Net worth</h2>
-        <NetWorthChart data={history.map((h) => ({ month: h.month, assets: h.assets_minor, liabilities: h.liabilities_minor }))} />
+        <NetWorthChart data={history.map((h) => ({ month: h.month, assets: h.assets_minor + h.property_minor, liabilities: h.liabilities_minor }))} />
       </section>
 
       <p className="px-1 text-xs text-muted-foreground">

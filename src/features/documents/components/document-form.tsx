@@ -27,6 +27,8 @@ export type DocumentFormOptions = {
   accounts: Option[];
   bills: Option[];
   goals: Option[];
+  assets: Option[];
+  familyMembers: Option[];
 };
 
 /** Uploads a file into an existing document: signed URL → direct upload → server verification. */
@@ -111,6 +113,8 @@ export function DocumentForm({
       transactionId: "",
       recurringId: "",
       goalId: "",
+      assetId: "",
+      familyMemberId: "",
       ...initial,
     },
   });
@@ -186,17 +190,31 @@ export function DocumentForm({
               ))}
             </NativeSelect>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="doc-person">Belongs to</FieldLabel>
-            <NativeSelect id="doc-person" {...register("relatedUserId")}>
-              <option value="">Household</option>
-              {options.members.map((m) => (
-                <option key={m.user_id} value={m.user_id}>
-                  {m.display_name}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
+          {options.familyMembers.length ? (
+            <Field>
+              <FieldLabel htmlFor="doc-family">Belongs to</FieldLabel>
+              <NativeSelect id="doc-family" {...register("familyMemberId")}>
+                <option value="">Household</option>
+                {options.familyMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+          ) : (
+            <Field>
+              <FieldLabel htmlFor="doc-person">Belongs to</FieldLabel>
+              <NativeSelect id="doc-person" {...register("relatedUserId")}>
+                <option value="">Household</option>
+                {options.members.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.display_name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+          )}
         </div>
 
         <Controller
@@ -253,9 +271,22 @@ export function DocumentForm({
           <FieldDescription>Separate with commas.</FieldDescription>
         </Field>
 
-        <details className="rounded-xl border px-3 py-2" open={Boolean(initial?.accountId || initial?.recurringId || initial?.goalId || initial?.transactionId)}>
-          <summary className="cursor-pointer text-sm font-medium">Link to an account, bill or goal</summary>
+        <details className="rounded-xl border px-3 py-2" open={Boolean(initial?.accountId || initial?.recurringId || initial?.goalId || initial?.transactionId || initial?.assetId)}>
+          <summary className="cursor-pointer text-sm font-medium">Link to a home, vehicle, account, bill or goal</summary>
           <div className="mt-3 grid gap-3">
+            {options.assets.length ? (
+              <Field>
+                <FieldLabel htmlFor="doc-asset">Home or vehicle</FieldLabel>
+                <NativeSelect id="doc-asset" {...register("assetId")}>
+                  <option value="">None</option>
+                  {options.assets.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            ) : null}
             <Field>
               <FieldLabel htmlFor="doc-account">Account</FieldLabel>
               <NativeSelect id="doc-account" {...register("accountId")}>

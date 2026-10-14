@@ -35,6 +35,8 @@ export type DocumentRow = {
   recurring_id: string | null;
   goal_id: string | null;
   related_user_id: string | null;
+  asset_id: string | null;
+  family_member_id: string | null;
   current_file_id: string | null;
   created_by: string | null;
   created_at: string;
@@ -43,7 +45,7 @@ export type DocumentRow = {
 };
 
 const COLUMNS =
-  "id, name, category_id, description, tags, issue_date, expiry_date, expiry_reminder_days, is_sensitive, is_archived, account_id, transaction_id, recurring_id, goal_id, related_user_id, current_file_id, created_by, created_at, updated_at, current_file:document_files!documents_household_id_current_file_id_fkey(id, file_name, mime_type, size_bytes)";
+  "id, name, category_id, description, tags, issue_date, expiry_date, expiry_reminder_days, is_sensitive, is_archived, account_id, transaction_id, recurring_id, goal_id, related_user_id, asset_id, family_member_id, current_file_id, created_by, created_at, updated_at, current_file:document_files!documents_household_id_current_file_id_fkey(id, file_name, mime_type, size_bytes)";
 
 function fail(scope: string, error: { message?: string; code?: string }): never {
   console.error(`[query:${scope}]`, { code: error.code, message: error.message });
@@ -68,7 +70,17 @@ export async function getDocumentCategories(ctx: HouseholdContext): Promise<Docu
 
 export async function getDocuments(
   ctx: HouseholdContext,
-  filters: { q?: string; category?: string; archived?: boolean; transactionId?: string; recurringId?: string; accountId?: string; goalId?: string } = {},
+  filters: {
+    q?: string;
+    category?: string;
+    archived?: boolean;
+    transactionId?: string;
+    recurringId?: string;
+    accountId?: string;
+    goalId?: string;
+    assetId?: string;
+    familyMemberId?: string;
+  } = {},
 ): Promise<DocumentRow[]> {
   let query = ctx.supabase.from("documents").select(COLUMNS).eq("household_id", ctx.household.id).eq("is_archived", Boolean(filters.archived));
   if (filters.q) {
@@ -81,6 +93,8 @@ export async function getDocuments(
   if (filters.recurringId) query = query.eq("recurring_id", filters.recurringId);
   if (filters.accountId) query = query.eq("account_id", filters.accountId);
   if (filters.goalId) query = query.eq("goal_id", filters.goalId);
+  if (filters.assetId) query = query.eq("asset_id", filters.assetId);
+  if (filters.familyMemberId) query = query.eq("family_member_id", filters.familyMemberId);
   const { data, error } = await query.order("updated_at", { ascending: false }).limit(500);
   if (error) fail("documents", error);
   return data.map(normalise);

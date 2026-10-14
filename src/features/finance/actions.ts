@@ -53,6 +53,8 @@ export async function saveTransaction(raw: unknown): Promise<ActionResult<{ id: 
     p_merchant: v.kind === "transfer" ? null : empty(v.merchant),
     p_notes: empty(v.notes),
     p_is_refund: v.kind === "expense" && Boolean(v.isRefund),
+    p_asset_id: v.kind === "transfer" ? null : empty(v.assetId),
+    p_family_member_id: v.kind === "transfer" ? null : empty(v.familyMemberId),
   });
   if (error) {
     logServerError("saveTransaction", error);

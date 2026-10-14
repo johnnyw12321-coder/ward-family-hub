@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarItemRow, itemDot } from "@/features/calendar/components/calendar-items";
 import { NewEventButton } from "@/features/calendar/components/event-form";
 import { groupByDate, type CalendarItem } from "@/features/calendar/expand";
+import { getAboutOptions } from "@/features/calendar/about-options";
 import { getCalendarItems } from "@/features/calendar/queries";
 import { requireHousehold } from "@/lib/auth/context";
 import {
@@ -81,7 +82,7 @@ async function CalendarView({ searchParams }: { searchParams: PageProps<"/calend
   const view: View = VIEWS.includes(sp.view as View) ? (sp.view as View) : "month";
   const date: CalendarDate = typeof sp.date === "string" && isCalendarDate(sp.date) ? sp.date : ctx.today;
   const { from, to } = range(view, date);
-  const items = await getCalendarItems(ctx, from, to);
+  const [items, about] = await Promise.all([getCalendarItems(ctx, from, to), getAboutOptions(ctx)]);
   const byDate = groupByDate(items);
   const names = Object.fromEntries(ctx.members.map((m) => [m.user_id, m.display_name]));
   const href = (v: View, d: CalendarDate) => `/calendar?view=${v}&date=${d}`;
@@ -127,7 +128,7 @@ async function CalendarView({ searchParams }: { searchParams: PageProps<"/calend
     <div className="space-y-4">
       <PageHeader
         title="Calendar"
-        actions={ctx.canWrite ? <NewEventButton members={ctx.members.map((m) => ({ user_id: m.user_id, display_name: m.display_name }))} defaultDate={date} /> : null}
+        actions={ctx.canWrite ? <NewEventButton members={ctx.members.map((m) => ({ user_id: m.user_id, display_name: m.display_name }))} about={about} defaultDate={date} /> : null}
       />
 
       <nav aria-label="Calendar view" className="grid grid-cols-4 gap-1 rounded-xl bg-muted p-1">

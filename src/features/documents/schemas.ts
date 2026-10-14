@@ -20,6 +20,8 @@ export const documentSchema = z
     transactionId: optionalUuid,
     recurringId: optionalUuid,
     goalId: optionalUuid,
+    assetId: optionalUuid,
+    familyMemberId: optionalUuid,
   })
   .superRefine((v, ctx) => {
     if (v.issueDate && v.expiryDate && v.expiryDate < v.issueDate) {

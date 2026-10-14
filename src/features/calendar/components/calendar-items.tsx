@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckIcon, FileClockIcon, FlagIcon, ListChecksIcon, ReceiptIcon, TargetIcon, TrendingUpIcon } from "lucide-react";
+import { CakeIcon, CarIcon, CheckIcon, FileClockIcon, FlagIcon, ListChecksIcon, ReceiptIcon, TargetIcon, TrendingUpIcon } from "lucide-react";
 import { cn } from "cn";
 import { EVENT_CATEGORY_LABELS, type CalendarItem, type EventCategory } from "../expand";
 
@@ -23,6 +23,8 @@ export function itemDot(item: CalendarItem): string {
   if (item.kind === "income") return "bg-emerald-500";
   if (item.kind === "task") return "bg-slate-400";
   if (item.kind === "document") return "bg-rose-400";
+  if (item.kind === "family") return "bg-fuchsia-500";
+  if (item.kind === "asset") return "bg-orange-500";
   return "bg-primary";
 }
 
@@ -41,6 +43,10 @@ function KindIcon({ item }: { item: CalendarItem }) {
       return <FlagIcon className={cls} aria-hidden />;
     case "document":
       return <FileClockIcon className={cls} aria-hidden />;
+    case "family":
+      return <CakeIcon className={cls} aria-hidden />;
+    case "asset":
+      return <CarIcon className={cls} aria-hidden />;
     default:
       return <span className={cn("size-2.5 rounded-full", itemDot(item))} aria-hidden />;
   }
@@ -62,6 +68,10 @@ function kindLabel(item: CalendarItem): string {
       return "Milestone due";
     case "document":
       return "Document expiry";
+    case "family":
+      return "Family";
+    case "asset":
+      return "Home & vehicles";
   }
 }
 

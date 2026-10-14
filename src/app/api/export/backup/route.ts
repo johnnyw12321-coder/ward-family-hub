@@ -8,6 +8,7 @@ const NO_ID_TABLES: Partial<Record<(typeof BACKUP_TABLES)[number], string[]>> = 
   household_members: ["user_id"],
   event_participants: ["event_id", "user_id"],
   event_completions: ["event_id", "occurrence_date"],
+  family_health: ["family_member_id"],
 };
 
 /**

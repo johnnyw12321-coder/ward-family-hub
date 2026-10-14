@@ -5,13 +5,14 @@ import Link from "next/link";
 import { ArrowLeftRightIcon, CalendarPlusIcon, ListPlusIcon, PlusIcon, ReceiptIcon, TrendingUpIcon, type LucideIcon } from "lucide-react";
 import { ResponsiveModal } from "@/components/shared/responsive-modal";
 import { instantToLocalTime, todayIn } from "@/lib/dates";
-import { TransactionForm, type AccountOption, type MemberOption } from "@/features/finance/components/transaction-form";
+import { TransactionForm, type AccountOption, type MemberOption, type RelatedOptions } from "@/features/finance/components/transaction-form";
 import type { Category } from "@/features/finance/types";
 
 export type QuickAddData = {
   accounts: AccountOption[];
   categories: Category[];
   members: MemberOption[];
+  related: RelatedOptions;
   meId: string;
   timezone: string;
   currency: string;
@@ -103,6 +104,7 @@ export function QuickAdd({ data }: { data: QuickAddData }) {
             accounts={data.accounts}
             categories={data.categories}
             members={data.members}
+            related={data.related}
             meId={data.meId}
             today={stamp.today}
             nowTime={stamp.time}

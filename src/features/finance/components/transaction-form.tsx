@@ -22,11 +22,14 @@ import type { AccountType } from "@/lib/finance/calculations";
 
 export type AccountOption = { id: string; name: string; type: AccountType; currency: string };
 export type MemberOption = { user_id: string; display_name: string };
+/** Family members and assets a transaction can be linked to. */
+export type RelatedOptions = { familyMembers: { id: string; name: string }[]; assets: { id: string; name: string }[] };
 
 type Props = {
   accounts: AccountOption[];
   categories: Category[];
   members: MemberOption[];
+  related?: RelatedOptions;
   meId: string;
   today: string;
   nowTime: string;
@@ -78,6 +81,7 @@ export function TransactionForm({
   accounts,
   categories,
   members,
+  related,
   meId,
   today,
   nowTime,
@@ -88,7 +92,9 @@ export function TransactionForm({
 }: Props) {
   const editing = Boolean(initial?.id);
   const [pending, startTransition] = useTransition();
-  const [showMore, setShowMore] = useState(Boolean(initial?.merchant || initial?.notes || initial?.isRefund));
+  const [showMore, setShowMore] = useState(
+    Boolean(initial?.merchant || initial?.notes || initial?.isRefund || initial?.assetId || initial?.familyMemberId),
+  );
 
   const form = useForm<TransactionInput>({
     resolver: zodResolver(transactionSchema),
@@ -106,6 +112,8 @@ export function TransactionForm({
       merchant: "",
       notes: "",
       isRefund: false,
+      assetId: "",
+      familyMemberId: "",
       ...initial,
     },
   });
@@ -368,6 +376,36 @@ export function TransactionForm({
                 <Input id="tx-merchant" autoComplete="off" {...register("merchant")} />
                 <FieldError>{err.merchant?.message}</FieldError>
               </Field>
+            ) : null}
+            {kind !== "transfer" && related && (related.assets.length || related.familyMembers.length) ? (
+              <div className="grid grid-cols-2 gap-3">
+                {related.assets.length ? (
+                  <Field>
+                    <FieldLabel htmlFor="tx-asset">For home or vehicle</FieldLabel>
+                    <NativeSelect id="tx-asset" {...register("assetId")}>
+                      <option value="">None</option>
+                      {related.assets.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                ) : null}
+                {related.familyMembers.length ? (
+                  <Field>
+                    <FieldLabel htmlFor="tx-member">For family member</FieldLabel>
+                    <NativeSelect id="tx-member" {...register("familyMemberId")}>
+                      <option value="">None</option>
+                      {related.familyMembers.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                ) : null}
+              </div>
             ) : null}
             <Field data-invalid={Boolean(err.notes)}>
               <FieldLabel htmlFor="tx-notes">Notes (optional)</FieldLabel>

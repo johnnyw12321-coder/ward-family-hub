@@ -12,6 +12,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { TransactionList } from "@/features/finance/components/transaction-list";
 import { categoryWithChildren, getAccounts, getCategories, getTransactions } from "@/features/finance/queries";
 import { transactionFiltersSchema, type TransactionFilters } from "@/features/finance/schemas";
+import { getAboutOptions } from "@/features/calendar/about-options";
 import { requireHousehold } from "@/lib/auth/context";
 import { formatDate } from "@/lib/dates";
 
@@ -44,7 +45,11 @@ async function TransactionsView({ searchParams }: { searchParams: SearchParams }
   const flat = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
   const filters = transactionFiltersSchema.parse(flat);
   const ctx = await requireHousehold();
-  const [accounts, categories] = await Promise.all([getAccounts(ctx, { includeArchived: true }), getCategories(ctx, { includeArchived: true })]);
+  const [accounts, categories, related] = await Promise.all([
+    getAccounts(ctx, { includeArchived: true }),
+    getCategories(ctx, { includeArchived: true }),
+    getAboutOptions(ctx),
+  ]);
   const categoryIds = filters.category ? categoryWithChildren(categories, filters.category) : undefined;
   const result = await getTransactions(ctx, filters, { categoryIds });
   const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
@@ -56,6 +61,8 @@ async function TransactionsView({ searchParams }: { searchParams: SearchParams }
   if (filters.account) chips.push({ label: accounts.find((a) => a.id === filters.account)?.name ?? "Account", key: "account" });
   if (filters.category) chips.push({ label: categories.find((c) => c.id === filters.category)?.name ?? "Category", key: "category" });
   if (filters.person) chips.push({ label: ctx.members.find((m) => m.user_id === filters.person)?.display_name ?? "Person", key: "person" });
+  if (filters.asset) chips.push({ label: related.assets.find((a) => a.id === filters.asset)?.name ?? "Home or vehicle", key: "asset" });
+  if (filters.member) chips.push({ label: related.familyMembers.find((m) => m.id === filters.member)?.name ?? "Family member", key: "member" });
   if (filters.from) chips.push({ label: `From ${formatDate(filters.from)}`, key: "from" });
   if (filters.to) chips.push({ label: `To ${formatDate(filters.to)}`, key: "to" });
   const hasFilters = chips.length > 0;
@@ -138,6 +145,8 @@ async function TransactionsView({ searchParams }: { searchParams: SearchParams }
               <span className="font-medium">To</span>
               <Input type="date" name="to" defaultValue={filters.to} />
             </label>
+            {filters.asset ? <input type="hidden" name="asset" value={filters.asset} /> : null}
+            {filters.member ? <input type="hidden" name="member" value={filters.member} /> : null}
             <div className="flex gap-2 sm:col-span-2">
               <Button type="submit" className="flex-1">
                 Apply filters

@@ -19,6 +19,7 @@ import {
   getSummary,
   getTransactions,
 } from "@/features/finance/queries";
+import { assetsNetWorthValue, getAssets } from "@/features/assets/queries";
 import { CalendarItemRow } from "@/features/calendar/components/calendar-items";
 import { sortItems } from "@/features/calendar/expand";
 import { getCalendarItems } from "@/features/calendar/queries";
@@ -53,7 +54,7 @@ async function Dashboard() {
   const lastMonth = addMonths(month, -1);
   const lastMonthSameDay = addMonths(today, -1);
 
-  const [accounts, summary, lastSummary, budget, recurring, recent, categories, todayItems, openTasks, goals] = await Promise.all([
+  const [accounts, summary, lastSummary, budget, recurring, recent, categories, todayItems, openTasks, goals, assets] = await Promise.all([
     getAccounts(ctx),
     getSummary(ctx, month, monthEnd(month)),
     getSummary(ctx, lastMonth, lastMonthSameDay),
@@ -64,6 +65,7 @@ async function Dashboard() {
     getCalendarItems(ctx, today, today),
     getOpenTasks(ctx),
     getGoals(ctx),
+    getAssets(ctx),
   ]);
   const activeGoals = goals.filter((g) => g.status === "in_progress").slice(0, 2);
   const [milestones, contributions] = await Promise.all([
@@ -76,7 +78,8 @@ async function Dashboard() {
   const overdueTasks = openTasks.filter((t) => t.due_date && t.due_date < today);
   const names = Object.fromEntries(ctx.members.map((m) => [m.user_id, m.display_name]));
 
-  const balances = summariseBalances(accounts);
+  const assetValue = assetsNetWorthValue(assets);
+  const balances = summariseBalances(accounts, assetValue);
   const net = surplus(summary);
   const spendChange = percentChange(summary.expense_minor, lastSummary.expense_minor);
   const horizon = addDays(today, 14);
@@ -149,7 +152,7 @@ async function Dashboard() {
         <StatCard label="Available cash" value={<Money minor={balances.availableCash} />} hint="Cash + chequing" href="/finances/accounts" />
         <StatCard label="Savings" value={<Money minor={balances.savings} />} href="/finances/accounts" />
         <StatCard label="Owed" value={<Money minor={balances.totalLiabilities} />} hint="Cards and loans" href="/finances/debts" />
-        <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint="Accounts only" href="/reports" />
+        <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint={assetValue ? "Incl. home & vehicles" : "Accounts only"} href="/reports" />
       </div>
 
       {!setupComplete ? (

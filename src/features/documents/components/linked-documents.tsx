@@ -14,7 +14,7 @@ export async function LinkedDocuments({
   attachLabel,
 }: {
   ctx: HouseholdContext;
-  filter: { transactionId?: string; recurringId?: string; accountId?: string; goalId?: string };
+  filter: { transactionId?: string; recurringId?: string; accountId?: string; goalId?: string; assetId?: string; familyMemberId?: string };
   title: string;
   attachHref: string;
   attachLabel: string;

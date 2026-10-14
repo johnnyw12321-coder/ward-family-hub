@@ -44,6 +44,8 @@ async function Form({ searchParams }: { searchParams: PageProps<"/documents/new"
           recurringId: pick("recurring"),
           accountId: pick("account"),
           goalId: pick("goal"),
+          assetId: pick("asset"),
+          familyMemberId: pick("member"),
         }}
       />
     </div>

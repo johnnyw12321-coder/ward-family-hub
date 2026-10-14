@@ -98,6 +98,8 @@ export type TransactionRow = {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  asset_id: string | null;
+  family_member_id: string | null;
 };
 
 export type RecurringItem = {

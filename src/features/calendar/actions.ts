@@ -34,6 +34,8 @@ export async function saveEvent(raw: unknown): Promise<ActionResult<{ id: string
     recurrence_interval: schedule?.interval ?? 1,
     recurrence_until: schedule && v.until ? v.until : null,
     reminder_minutes: [...new Set(v.reminders)].sort((a, b) => a - b),
+    family_member_id: v.familyMemberId || null,
+    asset_id: v.assetId || null,
   };
 
   const res = v.id

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { deleteEvent, setEventCompleted } from "@/features/calendar/actions";
 import { EditEventButton } from "@/features/calendar/components/event-form";
 import { EVENT_CATEGORY_LABELS, occurrenceInstants } from "@/features/calendar/expand";
+import { getAboutOptions } from "@/features/calendar/about-options";
 import { getCompletions, getEvent } from "@/features/calendar/queries";
 import { REMINDER_OPTIONS } from "@/features/calendar/schemas";
 import { requireHousehold } from "@/lib/auth/context";
@@ -40,7 +41,9 @@ async function EventDetail({
   const tz = ctx.household.timezone;
   const occurrence = typeof sp.date === "string" && isCalendarDate(sp.date) ? sp.date : event.start_date;
   const recurring = Boolean(event.recurrence_frequency);
-  const completions = recurring ? await getCompletions(ctx, [id]) : new Set<string>();
+  const [completions, about] = await Promise.all([recurring ? getCompletions(ctx, [id]) : Promise.resolve(new Set<string>()), getAboutOptions(ctx)]);
+  const aboutName = about.familyMembers.find((m) => m.id === event.family_member_id)?.name;
+  const assetName = about.assets.find((a) => a.id === event.asset_id)?.name;
   const completed = recurring ? completions.has(`${id}:${occurrence}`) : event.is_completed;
   const occ = occurrenceInstants(event, occurrence, tz);
   const who = event.participants.length
@@ -68,6 +71,12 @@ async function EventDetail({
             <dt className="text-muted-foreground">Who</dt>
             <dd className="font-medium">{who}</dd>
           </div>
+          {aboutName || assetName ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">About</dt>
+              <dd className="font-medium">{[aboutName, assetName].filter(Boolean).join(" · ")}</dd>
+            </div>
+          ) : null}
           {recurring ? (
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Repeats</dt>
@@ -117,6 +126,7 @@ async function EventDetail({
           />
           <EditEventButton
             members={ctx.members.map((m) => ({ user_id: m.user_id, display_name: m.display_name }))}
+            about={about}
             initial={{
               id: event.id,
               title: event.title,
@@ -132,6 +142,8 @@ async function EventDetail({
               schedule: event.recurrence_frequency ? presetValue(event.recurrence_frequency, event.recurrence_interval) : "",
               until: event.recurrence_until ?? "",
               reminders: event.reminder_minutes,
+              familyMemberId: event.family_member_id ?? "",
+              assetId: event.asset_id ?? "",
             }}
           />
           <ConfirmAction

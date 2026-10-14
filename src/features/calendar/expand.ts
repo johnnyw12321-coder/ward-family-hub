@@ -56,11 +56,13 @@ export type EventRow = {
   reminder_minutes: number[];
   is_completed: boolean;
   participants: string[];
+  family_member_id?: string | null;
+  asset_id?: string | null;
 };
 
 export type CalendarItem = {
   key: string;
-  kind: "event" | "bill" | "income" | "task" | "goal" | "milestone" | "document";
+  kind: "event" | "bill" | "income" | "task" | "goal" | "milestone" | "document" | "family" | "asset";
   sourceId: string;
   date: CalendarDate; // local day this item appears on
   /** Local start time for timed events, "HH:mm". */
@@ -182,7 +184,7 @@ export function expandBills(items: BillLike[], from: CalendarDate, to: CalendarD
 }
 
 export function sortItems(items: CalendarItem[]): CalendarItem[] {
-  const order: Record<CalendarItem["kind"], number> = { event: 1, bill: 2, income: 3, task: 4, goal: 5, milestone: 6, document: 7 };
+  const order: Record<CalendarItem["kind"], number> = { event: 1, bill: 2, income: 3, task: 4, goal: 5, milestone: 6, document: 7, family: 8, asset: 9 };
   return [...items].sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||

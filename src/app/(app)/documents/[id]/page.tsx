@@ -62,6 +62,7 @@ async function DocumentDetail({ params }: { params: PageProps<"/documents/[id]">
   const previewable = current && ["image/jpeg", "image/png", "image/webp"].includes(current.mime_type);
   const previewUrl = previewable ? await signedFileUrl(ctx, current.storage_path, { seconds: 120 }) : null;
   const links: [string, string | null | undefined, string | null][] = [
+    ["Home or vehicle", options.assets.find((a) => a.id === doc.asset_id)?.name, null],
     ["Account", options.accounts.find((a) => a.id === doc.account_id)?.name, doc.account_id ? `/finances/accounts/${doc.account_id}` : null],
     ["Bill", options.bills.find((b) => b.id === doc.recurring_id)?.name, doc.recurring_id ? `/finances/bills/${doc.recurring_id}` : null],
     ["Goal", options.goals.find((g) => g.id === doc.goal_id)?.name, doc.goal_id ? `/goals/${doc.goal_id}` : null],
@@ -120,7 +121,7 @@ async function DocumentDetail({ params }: { params: PageProps<"/documents/[id]">
           {(
             [
               ["Category", category?.name],
-              ["Belongs to", memberName(ctx.members, doc.related_user_id) ?? "Household"],
+              ["Belongs to", options.familyMembers.find((m) => m.id === doc.family_member_id)?.name ?? memberName(ctx.members, doc.related_user_id) ?? "Household"],
               ["Issued", doc.issue_date ? formatDate(doc.issue_date) : null],
               ["Expires", doc.expiry_date ? `${formatDate(doc.expiry_date)} · reminder ${doc.expiry_reminder_days} days before` : null],
               ["Tags", doc.tags.length ? doc.tags.map((t) => `#${t}`).join(" ") : null],
@@ -175,6 +176,8 @@ async function DocumentDetail({ params }: { params: PageProps<"/documents/[id]">
               transactionId: doc.transaction_id ?? "",
               recurringId: doc.recurring_id ?? "",
               goalId: doc.goal_id ?? "",
+              assetId: doc.asset_id ?? "",
+              familyMemberId: doc.family_member_id ?? "",
             }}
           />
           <ConfirmAction

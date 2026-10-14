@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { CategoryBars } from "@/features/finance/components/category-bars";
 import { IncomeExpenseChart } from "@/features/finance/components/charts";
 import { AccountGroups } from "@/features/finance/components/account-groups";
+import { assetsNetWorthValue, getAssets } from "@/features/assets/queries";
 import { getAccounts, getCategoryTotals, getMonthly, getSummary } from "@/features/finance/queries";
 import { requireHousehold } from "@/lib/auth/context";
 import { addMonths, monthEnd, monthLabel, monthStart } from "@/lib/dates";
@@ -30,13 +31,15 @@ async function Overview() {
   const ctx = await requireHousehold();
   const month = monthStart(ctx.today);
   const end = monthEnd(month);
-  const [accounts, summary, categories, monthly] = await Promise.all([
+  const [accounts, summary, categories, monthly, assets] = await Promise.all([
     getAccounts(ctx),
     getSummary(ctx, month, end),
     getCategoryTotals(ctx, month, end),
     getMonthly(ctx, addMonths(month, -5), end),
+    getAssets(ctx),
   ]);
-  const balances = summariseBalances(accounts);
+  const assetValue = assetsNetWorthValue(assets);
+  const balances = summariseBalances(accounts, assetValue);
   const rate = savingsRate(summary);
   const net = surplus(summary);
 
@@ -53,7 +56,7 @@ async function Overview() {
           hint={rate !== null ? `${rate}% of income unspent` : "No income recorded yet"}
           tone={net >= 0 ? "primary" : "default"}
         />
-        <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint="Across all accounts" href="/reports" />
+        <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint={assetValue ? "Accounts, home & vehicles" : "Across all accounts"} href="/reports" />
       </div>
 
       {summary.savings_transfer_minor || summary.debt_principal_minor || summary.interest_minor ? (

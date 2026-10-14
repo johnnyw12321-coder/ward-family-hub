@@ -20,14 +20,17 @@ import { saveEvent } from "../actions";
 import { EVENT_CATEGORY_LABELS } from "../expand";
 import { EVENT_CATEGORIES, REMINDER_OPTIONS, eventSchema, type EventInput } from "../schemas";
 
+export type AboutOptions = { familyMembers: { id: string; name: string }[]; assets: { id: string; name: string }[] };
+
 type Props = {
   members: { user_id: string; display_name: string }[];
+  about: AboutOptions;
   defaultDate: string;
   initial?: Partial<EventInput>;
   onSaved: (id: string) => void;
 };
 
-export function EventForm({ members, defaultDate, initial, onSaved }: Props) {
+export function EventForm({ members, about, defaultDate, initial, onSaved }: Props) {
   const [pending, start] = useTransition();
   const form = useForm<EventInput>({
     resolver: zodResolver(eventSchema),
@@ -45,6 +48,8 @@ export function EventForm({ members, defaultDate, initial, onSaved }: Props) {
       schedule: "",
       until: "",
       reminders: [1440],
+      familyMemberId: "",
+      assetId: "",
       ...initial,
     },
   });
@@ -213,6 +218,37 @@ export function EventForm({ members, defaultDate, initial, onSaved }: Props) {
           )}
         />
 
+        {about.familyMembers.length || about.assets.length ? (
+          <div className="grid grid-cols-2 gap-3">
+            {about.familyMembers.length ? (
+              <Field>
+                <FieldLabel htmlFor="ev-about">About</FieldLabel>
+                <NativeSelect id="ev-about" {...register("familyMemberId")}>
+                  <option value="">No one in particular</option>
+                  {about.familyMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            ) : null}
+            {about.assets.length ? (
+              <Field>
+                <FieldLabel htmlFor="ev-asset">Home or vehicle</FieldLabel>
+                <NativeSelect id="ev-asset" {...register("assetId")}>
+                  <option value="">None</option>
+                  {about.assets.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            ) : null}
+          </div>
+        ) : null}
+
         <Field>
           <FieldLabel htmlFor="ev-loc">Location</FieldLabel>
           <Input id="ev-loc" placeholder="Optional" {...register("location")} />
@@ -230,7 +266,7 @@ export function EventForm({ members, defaultDate, initial, onSaved }: Props) {
   );
 }
 
-export function NewEventButton({ members, defaultDate }: { members: Props["members"]; defaultDate: string }) {
+export function NewEventButton({ members, about, defaultDate }: { members: Props["members"]; about: AboutOptions; defaultDate: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -238,13 +274,13 @@ export function NewEventButton({ members, defaultDate }: { members: Props["membe
         <PlusIcon data-icon="inline-start" /> Event
       </Button>
       <ResponsiveModal open={open} onOpenChange={setOpen} title="New event">
-        {open ? <EventForm members={members} defaultDate={defaultDate} onSaved={() => setOpen(false)} /> : null}
+        {open ? <EventForm members={members} about={about} defaultDate={defaultDate} onSaved={() => setOpen(false)} /> : null}
       </ResponsiveModal>
     </>
   );
 }
 
-export function EditEventButton({ members, initial }: { members: Props["members"]; initial: Partial<EventInput> }) {
+export function EditEventButton({ members, about, initial }: { members: Props["members"]; about: AboutOptions; initial: Partial<EventInput> }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -252,13 +288,23 @@ export function EditEventButton({ members, initial }: { members: Props["members"
         <PencilIcon data-icon="inline-start" /> Edit
       </Button>
       <ResponsiveModal open={open} onOpenChange={setOpen} title="Edit event">
-        {open ? <EventForm members={members} defaultDate={initial.startDate ?? ""} initial={initial} onSaved={() => setOpen(false)} /> : null}
+        {open ? <EventForm members={members} about={about} defaultDate={initial.startDate ?? ""} initial={initial} onSaved={() => setOpen(false)} /> : null}
       </ResponsiveModal>
     </>
   );
 }
 
-export function NewEventPageForm({ members, defaultDate }: { members: Props["members"]; defaultDate: string }) {
+export function NewEventPageForm({
+  members,
+  about,
+  defaultDate,
+  initial,
+}: {
+  members: Props["members"];
+  about: AboutOptions;
+  defaultDate: string;
+  initial?: Partial<EventInput>;
+}) {
   const router = useRouter();
-  return <EventForm members={members} defaultDate={defaultDate} onSaved={() => router.push(`/calendar?date=${defaultDate}`)} />;
+  return <EventForm members={members} about={about} defaultDate={defaultDate} initial={initial} onSaved={() => router.push(`/calendar?date=${defaultDate}`)} />;
 }

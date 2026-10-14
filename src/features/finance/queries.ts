@@ -97,7 +97,7 @@ export async function getCategories(ctx: HouseholdContext, options: { kind?: Cat
 }
 
 const TX_COLUMNS =
-  "id, kind, occurred_at, occurred_on, currency, description, merchant, notes, category_id, category_name, category_parent_id, category_parent_name, payment_method, person_user_id, group_id, recurring_id, account_id, account_name, to_account_id, to_account_name, amount_minor, signed_amount_minor, created_by, updated_by, created_at, updated_at";
+  "id, kind, occurred_at, occurred_on, currency, description, merchant, notes, category_id, category_name, category_parent_id, category_parent_name, payment_method, person_user_id, group_id, recurring_id, account_id, account_name, to_account_id, to_account_name, amount_minor, signed_amount_minor, created_by, updated_by, created_at, updated_at, asset_id, family_member_id";
 
 function normaliseTx(row: Record<string, unknown>): TransactionRow {
   return {
@@ -143,6 +143,8 @@ export async function getTransactions(
     query = query.in("category_id", ids);
   }
   if (filters.person) query = query.eq("person_user_id", filters.person);
+  if (filters.asset) query = query.eq("asset_id", filters.asset);
+  if (filters.member) query = query.eq("family_member_id", filters.member);
   if (filters.from) query = query.gte("occurred_on", filters.from);
   if (filters.to) query = query.lte("occurred_on", filters.to);
 

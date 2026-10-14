@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const { ctx } = auth;
   const sp = Object.fromEntries(request.nextUrl.searchParams);
   const period = resolvePeriod(sp, ctx.today);
-  const { summary, previous, comparison, income, monthly } = await loadReport(ctx, period);
+  const { summary, previous, comparison, income, monthly, assetCosts } = await loadReport(ctx, period);
   const m = (v: number) => toDecimalString(v, ctx.household.base_currency);
 
   const rows: CsvCell[][] = [
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     ...monthly.map((r) => ["Monthly", r.month, m(r.income_minor), m(r.expense_minor), m(r.income_minor - r.expense_minor)]),
     ...comparison.map((c) => ["Spending category", c.name, m(c.current), m(c.previous), String(c.count)]),
     ...income.map((c) => ["Income category", c.category_name, m(c.total_minor), "", String(c.transaction_count)]),
+    ...assetCosts.map((a) => ["Home or vehicle cost", a.name, m(a.ledger), m(a.logged), m(a.ledger + a.logged)]),
   ];
   const csv = toCsv(["Section", "Item", "Value / This period", "Comparison / Spending", "Net / Count"], rows);
   return new NextResponse(csv, {

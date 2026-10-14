@@ -6,6 +6,7 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Logo } from "@/components/shared/logo";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getAboutOptions } from "@/features/calendar/about-options";
 import { getAccounts, getCategories } from "@/features/finance/queries";
 import { QUICK_ADD_LINKS } from "@/features/registry";
 import { refreshAndCountUnread } from "@/features/notifications/queries";
@@ -78,12 +79,13 @@ async function AccountControls() {
 async function QuickAddLoader() {
   const ctx = await requireHousehold();
   if (!ctx.canWrite) return null;
-  const [accounts, categories] = await Promise.all([getAccounts(ctx), getCategories(ctx)]);
+  const [accounts, categories, related] = await Promise.all([getAccounts(ctx), getCategories(ctx), getAboutOptions(ctx)]);
   return (
     <QuickAdd
       data={{
         accounts: accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, currency: a.currency })),
         categories,
+        related,
         members: ctx.members.filter((m) => m.role !== "viewer").map((m) => ({ user_id: m.user_id, display_name: m.display_name })),
         meId: ctx.userId,
         timezone: ctx.household.timezone,
