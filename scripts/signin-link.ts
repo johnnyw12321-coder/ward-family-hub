@@ -4,6 +4,7 @@
  * before custom SMTP is set up). Run locally only — it uses the service-role key.
  *
  *   npm run signin-link -- --email jonathan@example.com
+ *   npm run signin-link -- --email adanna@example.com --site https://your-app.vercel.app
  *
  * The link works once and expires (Supabase default: 1 hour). Treat it like a
  * password: open it yourself or hand it only to that person.
@@ -20,10 +21,11 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-const { values } = parseArgs({ options: { email: { type: "string" } } });
+const { values } = parseArgs({ options: { email: { type: "string" }, site: { type: "string" } } });
 const url = normaliseSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const siteUrl = (values.site ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+if (!/^https?:\/\/[^/]+$/.test(siteUrl)) fail("--site must be just the address, e.g. https://your-app.vercel.app");
 if (!url || !serviceKey) fail("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local.");
 const email = values.email?.trim().toLowerCase() ?? "";
 if (!email) fail('Pass --email "someone@example.com".');
