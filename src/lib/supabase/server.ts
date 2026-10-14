@@ -8,8 +8,10 @@ import { requireSupabaseConfig } from "@/lib/env";
  * Requests run as the signed-in user, so every query is subject to RLS.
  */
 export async function createClient() {
-  const { url, key } = requireSupabaseConfig();
+  // Read the request first: during prerendering this defers the component to
+  // request time instead of failing the build when env vars are absent.
   const cookieStore = await cookies();
+  const { url, key } = requireSupabaseConfig();
   return createServerClient(url, key, {
     cookies: {
       getAll() {
