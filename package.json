@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "provision": "tsx scripts/provision.ts",
-    "backup": "tsx scripts/backup.ts"
+    "backup": "tsx scripts/backup.ts",
+    "signin-link": "tsx scripts/signin-link.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
