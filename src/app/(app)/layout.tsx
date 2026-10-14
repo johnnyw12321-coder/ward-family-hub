@@ -1,0 +1,79 @@
+import { Suspense, type ReactNode } from "react";
+import Link from "next/link";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import { QuickAdd } from "@/components/layout/quick-add";
+import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { UserMenu } from "@/components/layout/user-menu";
+import { Logo } from "@/components/shared/logo";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getAccounts, getCategories } from "@/features/finance/queries";
+import { QUICK_ADD_LINKS } from "@/features/registry";
+import { requireHousehold } from "@/lib/auth/context";
+
+/**
+ * Authenticated shell. The chrome (navigation) is static and renders
+ * instantly; anything that depends on the session streams in behind Suspense.
+ * Every page also calls requireHousehold() itself — the layout is not the
+ * authorization boundary.
+ */
+export default function AppLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-dvh lg:flex">
+      <SidebarNav />
+      <div className="min-w-0 flex-1">
+        <header className="no-print sticky top-0 z-30 bg-background/85 pt-safe backdrop-blur-lg">
+          <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 lg:max-w-5xl lg:px-8">
+            <Link href="/" className="flex items-center gap-2 lg:invisible">
+              <Logo className="size-8" />
+              <span className="text-[15px] font-semibold tracking-tight">Ward Hub</span>
+            </Link>
+            <div className="flex items-center gap-2">
+              <Suspense fallback={<Skeleton className="size-10 rounded-full" />}>
+                <AccountControls />
+              </Suspense>
+            </div>
+          </div>
+        </header>
+        <main id="main" className="mx-auto w-full max-w-3xl px-4 pb-36 lg:max-w-5xl lg:px-8 lg:pb-16">
+          {children}
+        </main>
+      </div>
+      <BottomNav />
+      <Suspense fallback={null}>
+        <QuickAddLoader />
+      </Suspense>
+    </div>
+  );
+}
+
+async function AccountControls() {
+  const ctx = await requireHousehold();
+  return (
+    <UserMenu
+      name={ctx.me.display_name}
+      email={ctx.email}
+      color={ctx.me.color}
+      householdName={ctx.household.name}
+    />
+  );
+}
+
+async function QuickAddLoader() {
+  const ctx = await requireHousehold();
+  if (!ctx.canWrite) return null;
+  const [accounts, categories] = await Promise.all([getAccounts(ctx), getCategories(ctx)]);
+  return (
+    <QuickAdd
+      data={{
+        accounts: accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, currency: a.currency })),
+        categories,
+        members: ctx.members.filter((m) => m.role !== "viewer").map((m) => ({ user_id: m.user_id, display_name: m.display_name })),
+        meId: ctx.userId,
+        timezone: ctx.household.timezone,
+        currency: ctx.household.base_currency,
+        canWrite: ctx.canWrite,
+        links: QUICK_ADD_LINKS,
+      }}
+    />
+  );
+}

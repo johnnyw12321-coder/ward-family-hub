@@ -941,6 +941,39 @@ begin
 end;
 $$;
 
+-- Undo a settlement atomically: remove the payment record and its ledger
+-- transaction, and move next_due_date back if this was the latest settlement.
+create or replace function public.undo_recurring_payment(p_household_id uuid, p_payment_id uuid)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_payment public.recurring_payments;
+  v_item public.recurring_items;
+begin
+  select * into v_payment from public.recurring_payments
+  where id = p_payment_id and household_id = p_household_id;
+  if not found then
+    raise exception 'That payment no longer exists' using errcode = 'P0002';
+  end if;
+  select * into v_item from public.recurring_items where id = v_payment.recurring_id for update;
+
+  delete from public.recurring_payments where id = v_payment.id;
+  if v_payment.transaction_id is not null then
+    delete from public.transactions where id = v_payment.transaction_id and household_id = p_household_id;
+  end if;
+
+  if v_item.next_due_date = public.next_occurrence_after(
+       v_item.anchor_date, v_item.frequency, v_item.interval_count, v_payment.due_date) then
+    update public.recurring_items
+       set next_due_date = v_payment.due_date, is_active = true
+     where id = v_item.id;
+  end if;
+end;
+$$;
+
 -- Copy a month's budget into another month. Allocations flagged
 -- carry_forward bring their unspent remainder (never negative) along.
 create or replace function public.copy_budget(
@@ -1274,6 +1307,7 @@ revoke all on function public.reconcile_account from public, anon;
 revoke all on function public.record_debt_payment from public, anon;
 revoke all on function public.settle_recurring from public, anon;
 revoke all on function public.copy_budget from public, anon;
+revoke all on function public.undo_recurring_payment from public, anon;
 revoke all on function public.budget_progress from public, anon;
 revoke all on function public.report_summary from public, anon;
 revoke all on function public.report_monthly from public, anon;
@@ -1285,6 +1319,7 @@ grant execute on function public.reconcile_account to authenticated;
 grant execute on function public.record_debt_payment to authenticated;
 grant execute on function public.settle_recurring to authenticated;
 grant execute on function public.copy_budget to authenticated;
+grant execute on function public.undo_recurring_payment to authenticated;
 grant execute on function public.budget_progress to authenticated;
 grant execute on function public.report_summary to authenticated;
 grant execute on function public.report_monthly to authenticated;

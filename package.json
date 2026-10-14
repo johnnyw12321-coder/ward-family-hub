@@ -1,12 +1,18 @@
 {
-  "name": "scratch-2026-10-14-57ac7d",
+  "name": "ward-family-hub",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "provision": "tsx scripts/provision.ts",
+    "backup": "tsx scripts/backup.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
@@ -45,5 +51,8 @@
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }
