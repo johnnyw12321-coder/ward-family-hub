@@ -3,6 +3,13 @@ import { logServerError } from "@/lib/actions";
 import { getActionContext } from "@/lib/auth/context";
 import { BACKUP_TABLES } from "@/features/settings/backup-tables";
 
+/** Unique sort keys for tables without an id column (stable pagination). */
+const NO_ID_TABLES: Partial<Record<(typeof BACKUP_TABLES)[number], string[]>> = {
+  household_members: ["user_id"],
+  event_participants: ["event_id", "user_id"],
+  event_completions: ["event_id", "occurrence_date"],
+};
+
 /**
  * Full JSON export of the household's records, read as the signed-in user
  * (RLS applies), in pages of 1000 rows. Restoring is documented in
@@ -21,7 +28,9 @@ export async function GET() {
         table === "households"
           ? ctx.supabase.from(table).select("*").eq("id", ctx.household.id)
           : ctx.supabase.from(table).select("*").eq("household_id", ctx.household.id);
-      const { data, error } = await query.order(table === "household_members" ? "user_id" : "id").range(from, from + 999);
+      let ordered = query;
+      for (const column of NO_ID_TABLES[table] ?? ["id"]) ordered = ordered.order(column);
+      const { data, error } = await ordered.range(from, from + 999);
       if (error) {
         logServerError(`backup:${table}`, error);
         return NextResponse.json({ error: "The backup could not be completed. Please try again." }, { status: 500 });

@@ -44,6 +44,11 @@ export const MORE_NAV: NavItem[] = [
 
 export function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
-  if (href === "/more") return MORE_NAV.some((i) => pathname.startsWith(i.href)) || pathname.startsWith("/more");
+  if (href === "/more")
+    return (
+      MORE_NAV.some((i) => pathname.startsWith(i.href)) ||
+      ["/more", "/shopping", "/notifications"].some((p) => pathname.startsWith(p))
+    );
+  if (href === "/tasks") return pathname.startsWith("/tasks") || pathname.startsWith("/shopping");
   return pathname === href || pathname.startsWith(`${href}/`);
 }

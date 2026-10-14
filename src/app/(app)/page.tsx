@@ -19,7 +19,14 @@ import {
   getSummary,
   getTransactions,
 } from "@/features/finance/queries";
-import { requireHousehold } from "@/lib/auth/context";
+import { CalendarItemRow } from "@/features/calendar/components/calendar-items";
+import { sortItems } from "@/features/calendar/expand";
+import { getCalendarItems } from "@/features/calendar/queries";
+import { GoalCard } from "@/features/goals/components/goal-card";
+import { goalProgress, goalProjection } from "@/features/goals/progress";
+import { buildInputs, getContributions, getGoals, getMilestones } from "@/features/goals/queries";
+import { getOpenTasks } from "@/features/tasks/queries";
+import { memberName, requireHousehold } from "@/lib/auth/context";
 import { addDays, addMonths, formatDate, monthEnd, monthLabel, monthStart } from "@/lib/dates";
 import { budgetStatus, monthElapsedPercent, percentChange, summariseBalances, surplus } from "@/lib/finance/calculations";
 
@@ -46,7 +53,7 @@ async function Dashboard() {
   const lastMonth = addMonths(month, -1);
   const lastMonthSameDay = addMonths(today, -1);
 
-  const [accounts, summary, lastSummary, budget, recurring, recent, categories] = await Promise.all([
+  const [accounts, summary, lastSummary, budget, recurring, recent, categories, todayItems, openTasks, goals] = await Promise.all([
     getAccounts(ctx),
     getSummary(ctx, month, monthEnd(month)),
     getSummary(ctx, lastMonth, lastMonthSameDay),
@@ -54,7 +61,20 @@ async function Dashboard() {
     getRecurringItems(ctx),
     getTransactions(ctx, {}, { pageSize: 6 }),
     getCategories(ctx, { includeArchived: true }),
+    getCalendarItems(ctx, today, today),
+    getOpenTasks(ctx),
+    getGoals(ctx),
   ]);
+  const activeGoals = goals.filter((g) => g.status === "in_progress").slice(0, 2);
+  const [milestones, contributions] = await Promise.all([
+    getMilestones(ctx, activeGoals.map((g) => g.id)),
+    getContributions(ctx, activeGoals.map((g) => g.id)),
+  ]);
+  const goalInputs = buildInputs(activeGoals, new Map(accounts.map((a) => [a.id, a.balance_minor])), milestones, contributions);
+  // Bills already have their own section; today's agenda shows everything else.
+  const agenda = sortItems(todayItems.filter((i) => i.kind !== "bill" && i.kind !== "income"));
+  const overdueTasks = openTasks.filter((t) => t.due_date && t.due_date < today);
+  const names = Object.fromEntries(ctx.members.map((m) => [m.user_id, m.display_name]));
 
   const balances = summariseBalances(accounts);
   const net = surplus(summary);
@@ -155,6 +175,32 @@ async function Dashboard() {
 
       <section>
         <SectionHeading
+          title="Today"
+          action={
+            <Link href="/calendar" className="text-sm font-medium text-primary">
+              Calendar
+            </Link>
+          }
+        />
+        {agenda.length ? (
+          <ul className="divide-y overflow-hidden rounded-2xl bg-card shadow-card ring-1 ring-border/80">
+            {agenda.map((item) => (
+              <CalendarItemRow key={item.key} item={item} names={names} />
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-2xl bg-card p-4 text-sm text-muted-foreground shadow-card ring-1 ring-border/80">Nothing on the calendar today.</p>
+        )}
+        {overdueTasks.length ? (
+          <Link href="/tasks" className="mt-2 flex items-center justify-between rounded-xl px-1 text-sm font-medium text-destructive">
+            {overdueTasks.length === 1 ? "1 overdue task" : `${overdueTasks.length} overdue tasks`}
+            <ArrowRightIcon className="size-4" aria-hidden />
+          </Link>
+        ) : null}
+      </section>
+
+      <section>
+        <SectionHeading
           title="Upcoming bills"
           action={
             <Link href="/finances/bills" className="text-sm font-medium text-primary">
@@ -197,6 +243,33 @@ async function Dashboard() {
                 compact
               />
             ))}
+          </div>
+        </section>
+      ) : null}
+
+      {activeGoals.length ? (
+        <section>
+          <SectionHeading
+            title="Goals"
+            action={
+              <Link href="/goals" className="text-sm font-medium text-primary">
+                All goals
+              </Link>
+            }
+          />
+          <div className="grid gap-3 lg:grid-cols-2">
+            {activeGoals.map((g) => {
+              const progress = goalProgress(g, goalInputs.get(g.id) ?? {});
+              return (
+                <GoalCard
+                  key={g.id}
+                  goal={g}
+                  progress={progress}
+                  projection={goalProjection(g, progress, today)}
+                  owner={memberName(ctx.members, g.assigned_user_id)}
+                />
+              );
+            })}
           </div>
         </section>
       ) : null}

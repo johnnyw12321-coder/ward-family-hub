@@ -8,7 +8,9 @@ import { Logo } from "@/components/shared/logo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAccounts, getCategories } from "@/features/finance/queries";
 import { QUICK_ADD_LINKS } from "@/features/registry";
+import { refreshAndCountUnread } from "@/features/notifications/queries";
 import { requireHousehold } from "@/lib/auth/context";
+import { BellIcon } from "lucide-react";
 
 /**
  * Authenticated shell. The chrome (navigation) is static and renders
@@ -28,7 +30,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <span className="text-[15px] font-semibold tracking-tight">Ward Hub</span>
             </Link>
             <div className="flex items-center gap-2">
-              <Suspense fallback={<Skeleton className="size-10 rounded-full" />}>
+              <Suspense fallback={<Skeleton className="h-10 w-[5.5rem] rounded-full" />}>
                 <AccountControls />
               </Suspense>
             </div>
@@ -48,13 +50,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
 async function AccountControls() {
   const ctx = await requireHousehold();
+  const unread = await refreshAndCountUnread(ctx);
   return (
-    <UserMenu
-      name={ctx.me.display_name}
-      email={ctx.email}
-      color={ctx.me.color}
-      householdName={ctx.household.name}
-    />
+    <>
+      <Link
+        href="/notifications"
+        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        className="relative flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <BellIcon className="size-5" aria-hidden />
+        {unread ? (
+          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white tabular">
+            {unread > 99 ? "99+" : unread}
+          </span>
+        ) : null}
+      </Link>
+      <UserMenu
+        name={ctx.me.display_name}
+        email={ctx.email}
+        color={ctx.me.color}
+        householdName={ctx.household.name}
+      />
+    </>
   );
 }
 

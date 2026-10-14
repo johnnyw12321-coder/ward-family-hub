@@ -33,6 +33,10 @@ const TABLE_LABELS: Record<string, string> = {
   recurring_items: "Recurring item",
   recurring_payments: "Bill payment",
   household_members: "Member",
+  goals: "Goal",
+  goal_contributions: "Goal contribution",
+  calendar_events: "Event",
+  tasks: "Task",
 };
 
 export default function SettingsPage() {
