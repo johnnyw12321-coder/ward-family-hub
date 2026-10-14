@@ -30,6 +30,7 @@ import { getOpenTasks } from "@/features/tasks/queries";
 import { memberName, requireHousehold } from "@/lib/auth/context";
 import { addDays, addMonths, formatDate, monthEnd, monthLabel, monthStart } from "@/lib/dates";
 import { budgetStatus, monthElapsedPercent, percentChange, summariseBalances, surplus } from "@/lib/finance/calculations";
+import { safeToSpend } from "@/lib/finance/forecast";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -79,6 +80,12 @@ async function Dashboard() {
   const names = Object.fromEntries(ctx.members.map((m) => [m.user_id, m.display_name]));
 
   const assetValue = assetsNetWorthValue(assets);
+  const cardIds = new Set(accounts.filter((a) => a.type === "credit_card").map((a) => a.id));
+  const forecast = safeToSpend(
+    summariseBalances(accounts).availableCash,
+    recurring.map((r) => ({ ...r, paidByCard: Boolean(r.account_id && cardIds.has(r.account_id)) })),
+    today,
+  );
   const balances = summariseBalances(accounts, assetValue);
   const net = surplus(summary);
   const spendChange = percentChange(summary.expense_minor, lastSummary.expense_minor);
@@ -154,6 +161,34 @@ async function Dashboard() {
         <StatCard label="Owed" value={<Money minor={balances.totalLiabilities} />} hint="Cards and loans" href="/finances/debts" />
         <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint={assetValue ? "Incl. home & vehicles" : "Accounts only"} href="/reports" />
       </div>
+
+      {forecast ? (
+        <section className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Safe to spend until {formatDate(forecast.payday)}</h2>
+              <p className="text-xs text-muted-foreground">
+                Cash and chequing, minus {forecast.bills.length} bill{forecast.bills.length === 1 ? "" : "s"} due before {forecast.incomeName}.
+              </p>
+            </div>
+            <Money minor={forecast.safeMinor} className={forecast.safeMinor < 0 ? "text-xl font-semibold text-destructive" : "text-xl font-semibold"} />
+          </div>
+          {forecast.bills.length ? (
+            <ul className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
+              {forecast.bills.slice(0, 4).map((b) => (
+                <li key={`${b.name}-${b.date}`} className="flex justify-between gap-3">
+                  <span className="truncate">
+                    {b.name} · {formatDate(b.date)}
+                  </span>
+                  <Money minor={b.amount_minor} />
+                </li>
+              ))}
+              {forecast.bills.length > 4 ? <li>+{forecast.bills.length - 4} more</li> : null}
+            </ul>
+          ) : null}
+          <p className="mt-2 text-[11px] text-muted-foreground">An estimate from your recurring items; bills charged to a credit card aren&apos;t included.</p>
+        </section>
+      ) : null}
 
       {!setupComplete ? (
         <section className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">

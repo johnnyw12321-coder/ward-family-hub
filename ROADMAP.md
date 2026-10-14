@@ -3,8 +3,8 @@
 Status key: ✅ built and covered by automated tests · 🟡 built, needs end-to-end
 verification against a live Supabase project · ⬜ not started
 
-> **Overall:** Phases 1–4 are built. Typecheck, lint, the production build and
-> 151 automated tests pass. **No phase has been verified end-to-end in a browser
+> **Overall:** Phases 1–5 are built, plus the first Phase 6 forecasting feature.
+> Typecheck, lint, the production build and 165 automated tests pass. **No phase has been verified end-to-end in a browser
 > against real Supabase yet** — that requires your Supabase project (or the
 > local Docker stack) and is the next step. Until then every UI feature is 🟡.
 
@@ -52,21 +52,28 @@ verification against a live Supabase project · ⬜ not started
 - 🟡 Receipts on transactions; documents on bills and accounts; expiry dates on the calendar; expiry notifications
 - ✅ Owner-run backup downloads every stored file
 
-## Phase 5 — Assets and family ⬜
+## Phase 5 — Assets and family ✅🟡
 
-Property (value history, mortgage link, renovations, maintenance, appliances,
-warranties, contractors), vehicles (loan, insurance and registration renewals,
-mileage, servicing, repairs), expense linking for total cost of ownership,
-family profiles (school/daycare, emergency contacts, important dates,
-milestones), child-related spending, protected medical notes, asset values in
-net worth.
+- ✅ Schema with RLS and composite links; health details gated by two-factor and audited without values (tested)
+- ✅ Cost of ownership: ledger spending linked to an asset vs costs logged only on records, never double counted (tested)
+- ✅ Valuation history drives current value and month-end net worth (tested)
+- 🟡 Home & property: details, value history, mortgage link and equity, maintenance/renovation records (optionally posted as an expense), appliances and warranties, contractors
+- 🟡 Vehicles: make/model/plate/VIN, odometer (kept current from service records), service/insurance/registration dates, service history, parts and warranties, loan link
+- 🟡 Family: profiles, school/daycare details, contacts (emergency, call/email), milestones and annual dates, protected health details, documents, child-related spending, upcoming appointments
+- 🟡 Links: transactions, events and documents can be "for" a home/vehicle or family member
+- 🟡 Calendar shows birthdays, family dates, vehicle dates and warranty ends; reminders for all of them
+- 🟡 Net worth everywhere includes home and vehicle values; Reports show home & vehicle costs
 
-## Phase 6 — Advanced ⬜
+## Phase 6 — Advanced (in progress)
 
-Long-range historical reports, forecasting (cash flow before payday), restore
-tool, optional Google Calendar sync, email/push notification channels, AI
-assistant per [docs/AI_ASSISTANT.md](docs/AI_ASSISTANT.md), offline transaction
-entry, performance work for 10–20 years of data.
+- ✅ Forecasting: "safe to spend until payday" on Home (tested)
+- ✅ Historical reports over any range/year, CSV exports, full JSON + file backups (from earlier phases)
+- ✅ AI assistant design: [docs/AI_ASSISTANT.md](docs/AI_ASSISTANT.md) (no AI service connected)
+- ⬜ Scripted restore tool
+- ⬜ Google Calendar sync (schema columns reserved)
+- ⬜ Email and push notification delivery (tables reserved; nothing is sent today)
+- ⬜ Offline transaction entry
+- ⬜ Performance work for 10–20 years of data (indexes are in place; pagination on transactions)
 
 ## Required external setup (your action)
 

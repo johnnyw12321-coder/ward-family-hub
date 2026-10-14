@@ -69,6 +69,13 @@ signed-in user; the app never uses the service-role key.
   service worker.
 - Document auditing is redacted (changed field names only, no values).
 
+## Family records
+
+Children's and adults' profiles are household-scoped like everything else.
+Medical details (allergies, conditions, medications, doctor, insurance) live in
+a separate `family_health` table with a RESTRICTIVE two-factor (aal2) policy
+for every operation, and its audit trail records only which fields changed.
+
 ## Integrity and audit
 
 - Money is integer minor units; ledger rules are enforced by deferred
@@ -109,7 +116,7 @@ signed-in user; the app never uses the service-role key.
 
 ## What is tested
 
-`npm test` (151 tests) includes, against real PostgreSQL (PGlite) with Supabase's
+`npm test` (165 tests) includes, against real PostgreSQL (PGlite) with Supabase's
 roles and default grants recreated:
 
 - every public table has RLS enabled; every view is `security_invoker`; no
@@ -132,6 +139,10 @@ roles and default grants recreated:
   types are rejected; expiry notifications don't reveal sensitive names
 - file validation: magic-byte sniffing (including disguised SVG/HTML/EXE/ZIP),
   filename sanitising, hashing
+- family: children's records invisible to other households; health details
+  unreadable and unwritable without aal2, audited without values
+- assets: cross-household asset links rejected; cost-of-ownership and valuation
+  reports
 - ledger: balances, credit-card double counting, refunds, transfer balancing,
   validation errors, atomic edits, timezone-local dates, report classification,
   reconciliation, budget attribution and carry-forward, recurrence and bill
