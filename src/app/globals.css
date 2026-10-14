@@ -53,6 +53,8 @@
   --color-expense: var(--expense);
   --color-clay: var(--clay);
   --color-surface: var(--surface);
+  --color-series-income: var(--series-income);
+  --color-series-spend: var(--series-spend);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -93,6 +95,9 @@
   --income: oklch(0.5 0.09 156);
   --expense: oklch(0.3 0.01 60);
   --clay: oklch(0.62 0.1 48);
+  /* Chart series: validated for colour-vision deficiency (dataviz validator, both modes). */
+  --series-income: #2e7d55;
+  --series-spend: #5b6fb5;
   --chart-1: oklch(0.55 0.075 156);
   --chart-2: oklch(0.66 0.1 50);
   --chart-3: oklch(0.56 0.05 245);
@@ -136,6 +141,8 @@
   --income: oklch(0.76 0.1 156);
   --expense: oklch(0.92 0.006 85);
   --clay: oklch(0.72 0.1 48);
+  --series-income: #3f9a68;
+  --series-spend: #7086d6;
   --chart-1: oklch(0.72 0.085 156);
   --chart-2: oklch(0.74 0.1 50);
   --chart-3: oklch(0.7 0.06 245);

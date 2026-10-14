@@ -246,3 +246,18 @@ export function progressPercent(startValue: number, currentValue: number, target
   const pct = new Decimal(currentValue - startValue).div(total).times(100).toDecimalPlaces(1).toNumber();
   return Math.min(100, Math.max(0, pct));
 }
+
+// ---------------------------------------------------------------------------
+// Recurring commitments
+// ---------------------------------------------------------------------------
+/** Average monthly cost of a recurring amount (52 weeks / 12 months), half-up to the cent. */
+export function monthlyEquivalent(amountMinor: Minor, frequency: "weekly" | "monthly" | "yearly", interval: number): Minor {
+  assertMinor(amountMinor);
+  const perMonth =
+    frequency === "weekly"
+      ? new Decimal(amountMinor).times(52).div(12 * interval)
+      : frequency === "monthly"
+        ? new Decimal(amountMinor).div(interval)
+        : new Decimal(amountMinor).div(12 * interval);
+  return perMonth.toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
+}

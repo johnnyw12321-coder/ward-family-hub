@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "cn";
 import { PRIMARY_NAV, isActive } from "./nav-items";
 
-export function BottomNav() {
-  const pathname = usePathname();
+function BottomNavView({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label="Main"
@@ -41,5 +41,18 @@ export function BottomNav() {
         })}
       </ul>
     </nav>
+  );
+}
+
+function BottomNavWithPath() {
+  return <BottomNavView pathname={usePathname()} />;
+}
+
+/** Active-state needs the URL, which streams in; the fallback is identical minus the highlight. */
+export function BottomNav() {
+  return (
+    <Suspense fallback={<BottomNavView pathname="" />}>
+      <BottomNavWithPath />
+    </Suspense>
   );
 }

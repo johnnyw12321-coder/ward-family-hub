@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export function RetryButton() {
   return (
-    <Button size="lg" onClick={() => window.location.assign("/")}>
+    <Button size="lg" onClick={() => window.location.reload()}>
       <RefreshCwIcon data-icon="inline-start" />
       Try again
     </Button>

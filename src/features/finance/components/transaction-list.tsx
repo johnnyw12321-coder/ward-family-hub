@@ -27,21 +27,32 @@ function subtitle(tx: TransactionRow, members: Member[], timezone: string): stri
   return parts.filter(Boolean).join(" · ");
 }
 
+/** Amount from the household's view, or from one account's view for transfers. */
+export function transferAwareAmount(tx: TransactionRow, accountId?: string): number {
+  if (tx.kind !== "transfer") return tx.signed_amount_minor;
+  if (!accountId) return tx.amount_minor;
+  return tx.to_account_id === accountId ? tx.amount_minor : -tx.amount_minor;
+}
+
 export function TransactionItem({
   tx,
   categoriesById,
   members,
   timezone,
   showDate,
+  perspectiveAccountId,
 }: {
   tx: TransactionRow;
   categoriesById: Map<string, Category>;
   members: Member[];
   timezone: string;
   showDate?: boolean;
+  /** Show transfers as money in/out of this account. */
+  perspectiveAccountId?: string;
 }) {
   const cat = rowCategory(tx, categoriesById);
-  const amount = tx.kind === "transfer" ? tx.amount_minor : tx.signed_amount_minor;
+  const amount = transferAwareAmount(tx, perspectiveAccountId);
+  const muted = tx.kind === "transfer" && !perspectiveAccountId;
   return (
     <li>
       <Link
@@ -63,7 +74,7 @@ export function TransactionItem({
         <Money
           minor={amount}
           currency={tx.currency}
-          tone={tx.kind === "transfer" ? "muted" : "signed"}
+          tone={muted ? "muted" : "signed"}
           className="text-[15px] font-semibold"
         />
       </Link>
@@ -77,11 +88,13 @@ export function TransactionList({
   categories,
   members,
   timezone,
+  perspectiveAccountId,
 }: {
   rows: TransactionRow[];
   categories: Category[];
   members: Member[];
   timezone: string;
+  perspectiveAccountId?: string;
 }) {
   const byId = new Map(categories.map((c) => [c.id, c]));
   const groups = new Map<CalendarDate, TransactionRow[]>();
@@ -93,7 +106,10 @@ export function TransactionList({
   return (
     <div className="space-y-4">
       {[...groups.entries()].map(([day, list]) => {
-        const net = list.reduce((sum, t) => sum + (t.kind === "transfer" ? 0 : t.signed_amount_minor), 0);
+        const net = list.reduce(
+          (sum, t) => sum + (t.kind === "transfer" && !perspectiveAccountId ? 0 : transferAwareAmount(t, perspectiveAccountId)),
+          0,
+        );
         return (
           <section key={day} aria-label={formatDate(day)}>
             <div className="mb-1.5 flex items-baseline justify-between px-1 text-xs font-medium text-muted-foreground">
@@ -104,7 +120,14 @@ export function TransactionList({
             </div>
             <ul className="divide-y overflow-hidden rounded-2xl bg-card shadow-card ring-1 ring-border/80">
               {list.map((tx) => (
-                <TransactionItem key={tx.id} tx={tx} categoriesById={byId} members={members} timezone={timezone} />
+                <TransactionItem
+                  key={tx.id}
+                  tx={tx}
+                  categoriesById={byId}
+                  members={members}
+                  timezone={timezone}
+                  perspectiveAccountId={perspectiveAccountId}
+                />
               ))}
             </ul>
           </section>

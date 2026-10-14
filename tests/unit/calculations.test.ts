@@ -136,3 +136,23 @@ describe("goals", () => {
     expect(progressPercent(0, 12_000, 10_000)).toBe(100);
   });
 });
+
+import { monthlyEquivalent } from "@/lib/finance/calculations";
+import { dueLabel, dueState } from "@/features/finance/bills";
+
+describe("recurring commitments", () => {
+  it("normalises schedules to a monthly amount", () => {
+    expect(monthlyEquivalent(100_000, "monthly", 1)).toBe(100_000);
+    expect(monthlyEquivalent(100_000, "monthly", 3)).toBe(33_333);
+    expect(monthlyEquivalent(120_000, "yearly", 1)).toBe(10_000);
+    expect(monthlyEquivalent(10_000, "weekly", 2)).toBe(21_667); // 10,000 * 52 / 24 = 21,666.67
+  });
+
+  it("never treats a past due date as paid", () => {
+    expect(dueState("2026-10-10", "2026-10-14", 3)).toBe("overdue");
+    expect(dueState("2026-10-14", "2026-10-14", 3)).toBe("due-today");
+    expect(dueState("2026-10-16", "2026-10-14", 3)).toBe("due-soon");
+    expect(dueState("2026-10-30", "2026-10-14", 3)).toBe("upcoming");
+    expect(dueLabel("2026-10-10", "2026-10-14")).toBe("4 days overdue");
+  });
+});

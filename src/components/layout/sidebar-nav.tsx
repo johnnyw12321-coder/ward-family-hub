@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "cn";
 import { Logo } from "@/components/shared/logo";
@@ -24,8 +25,7 @@ function SideLink({ item, pathname }: { item: NavItem; pathname: string }) {
   );
 }
 
-export function SidebarNav() {
-  const pathname = usePathname();
+function SidebarNavView({ pathname }: { pathname: string }) {
   return (
     <aside className="no-print sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-sidebar px-3 py-5 lg:flex">
       <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
@@ -47,5 +47,18 @@ export function SidebarNav() {
         ))}
       </nav>
     </aside>
+  );
+}
+
+function SidebarNavWithPath() {
+  return <SidebarNavView pathname={usePathname()} />;
+}
+
+/** Active-state needs the URL, which streams in; the fallback is identical minus the highlight. */
+export function SidebarNav() {
+  return (
+    <Suspense fallback={<SidebarNavView pathname="" />}>
+      <SidebarNavWithPath />
+    </Suspense>
   );
 }
