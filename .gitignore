@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local backups (contain private data)
+/backups
+# supabase local
+supabase/.temp
+supabase/.branches
