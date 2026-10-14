@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DatabaseBackupIcon, DownloadIcon } from "lucide-react";
 import { cn } from "cn";
-import { memberColorClass } from "@/components/shared/member-color";
+import { isMemberColor, memberColorClass } from "@/components/shared/member-color";
 import { PageHeader, SectionHeading } from "@/components/shared/page-header";
 import { CardSkeleton } from "@/components/shared/skeletons";
 import { Badge } from "@/components/ui/badge";
@@ -77,7 +77,7 @@ async function SettingsView() {
       <section>
         <SectionHeading title="Your profile" />
         <div className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
-          <ProfileForm initial={{ displayName: ctx.me.display_name, color: ctx.me.color as "sage" }} />
+          <ProfileForm initial={{ displayName: ctx.me.display_name, color: isMemberColor(ctx.me.color) ? ctx.me.color : "sage" }} />
           {ctx.email ? <p className="mt-4 text-xs text-muted-foreground">Signed in as {ctx.email}</p> : null}
         </div>
       </section>

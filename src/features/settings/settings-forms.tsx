@@ -1,13 +1,13 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckIcon } from "lucide-react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { cn } from "cn";
-import { MEMBER_COLORS, memberColorClass } from "@/components/shared/member-color";
+import { applyAccent, MEMBER_COLOR_LABELS, MEMBER_COLORS, restoreAccent } from "@/components/shared/member-color";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,14 @@ type ProfileValues = z.infer<typeof profileForm>;
 export function ProfileForm({ initial }: { initial: ProfileValues }) {
   const [pending, start] = useTransition();
   const form = useForm<ProfileValues>({ resolver: zodResolver(profileForm), defaultValues: initial });
+  const color = useWatch({ control: form.control, name: "color" });
+
+  // Preview the theme while choosing; leaving without saving restores it.
+  useEffect(() => {
+    applyAccent(color, { persist: false });
+  }, [color]);
+  useEffect(() => restoreAccent, []);
+
   return (
     <form
       noValidate
@@ -28,8 +36,10 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
       onSubmit={form.handleSubmit((v) =>
         start(async () => {
           const r = await updateProfile(v);
-          if (r.ok) toast.success(r.message);
-          else toast.error(r.error);
+          if (r.ok) {
+            applyAccent(v.color);
+            toast.success(r.message);
+          } else toast.error(r.error);
         }),
       )}
     >
@@ -44,19 +54,20 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
           name="color"
           render={({ field }) => (
             <Field>
-              <FieldLabel id="pf-color">Colour</FieldLabel>
-              <div role="radiogroup" aria-labelledby="pf-color" className="flex flex-wrap gap-2">
+              <FieldLabel id="pf-color">Colour and theme</FieldLabel>
+              <div role="radiogroup" aria-labelledby="pf-color" aria-describedby="pf-color-help" className="flex flex-wrap gap-2">
                 {MEMBER_COLORS.map((c) => (
                   <button
                     key={c}
                     type="button"
                     role="radio"
+                    data-accent={c}
                     aria-checked={field.value === c}
-                    aria-label={c}
+                    aria-label={MEMBER_COLOR_LABELS[c]}
+                    title={MEMBER_COLOR_LABELS[c]}
                     onClick={() => field.onChange(c)}
                     className={cn(
-                      "flex size-10 items-center justify-center rounded-full ring-offset-2 ring-offset-card transition-shadow",
-                      memberColorClass(c),
+                      "flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground ring-offset-2 ring-offset-card transition-shadow",
                       field.value === c && "ring-2 ring-foreground",
                     )}
                   >
@@ -64,6 +75,10 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
                   </button>
                 ))}
               </div>
+              <FieldDescription id="pf-color-help">
+                {MEMBER_COLOR_LABELS[field.value]} — your avatar colour and your app theme. It&apos;s yours alone and follows you to
+                any device you sign in on. Money colours (income, warnings) stay the same.
+              </FieldDescription>
             </Field>
           )}
         />

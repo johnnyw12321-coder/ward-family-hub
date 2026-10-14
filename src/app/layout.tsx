@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { ACCENT_BOOT_SCRIPT } from "@/components/shared/member-color";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { ServiceWorkerRegistration } from "@/components/shared/service-worker";
 import { Toaster } from "@/components/ui/sonner";
@@ -34,6 +35,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en-TT" className={jakarta.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: ACCENT_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-dvh">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <TooltipProvider>{children}</TooltipProvider>

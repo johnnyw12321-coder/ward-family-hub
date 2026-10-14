@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { QuickAdd } from "@/components/layout/quick-add";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { UserMenu } from "@/components/layout/user-menu";
+import { AccentSync } from "@/components/shared/accent-sync";
 import { Logo } from "@/components/shared/logo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAboutOptions } from "@/features/calendar/about-options";
@@ -54,6 +55,7 @@ async function AccountControls() {
   const unread = await refreshAndCountUnread(ctx);
   return (
     <>
+      <AccentSync color={ctx.me.color} />
       <Link
         href="/notifications"
         aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
