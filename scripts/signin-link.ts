@@ -25,7 +25,7 @@ const url = normaliseSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 if (!url || !serviceKey) fail("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local.");
-const email = values.email?.trim().toLowerCase();
+const email = values.email?.trim().toLowerCase() ?? "";
 if (!email) fail('Pass --email "someone@example.com".');
 
 const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
