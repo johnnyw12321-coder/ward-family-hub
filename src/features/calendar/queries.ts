@@ -1,4 +1,5 @@
 import "server-only";
+import { getExpiringDocuments } from "@/features/documents/queries";
 import { getRecurringItems } from "@/features/finance/queries";
 import { getGoals, getMilestones } from "@/features/goals/queries";
 import { getTasksDueBetween } from "@/features/tasks/queries";
@@ -64,11 +65,12 @@ export async function getCompletions(ctx: HouseholdContext, eventIds: string[]):
 
 /** Everything that belongs on the calendar for a date range. */
 export async function getCalendarItems(ctx: HouseholdContext, from: CalendarDate, to: CalendarDate): Promise<CalendarItem[]> {
-  const [events, bills, tasks, goals] = await Promise.all([
+  const [events, bills, tasks, goals, documents] = await Promise.all([
     getEventsBetween(ctx, from, to),
     getRecurringItems(ctx),
     getTasksDueBetween(ctx, from, to),
     getGoals(ctx),
+    getExpiringDocuments(ctx, from, to),
   ]);
   const openGoals = goals.filter((g) => g.status === "in_progress" || g.status === "not_started");
   const [completions, milestones] = await Promise.all([
@@ -115,6 +117,16 @@ export async function getCalendarItems(ctx: HouseholdContext, from: CalendarDate
         title: m.title,
         href: `/goals/${m.goal_id}`,
       })),
+    ...documents.map<CalendarItem>((d) => ({
+      key: `document:${d.id}`,
+      kind: "document",
+      sourceId: d.id,
+      date: d.expiry_date!,
+      time: null,
+      endTime: null,
+      title: d.is_sensitive ? "Sensitive document expires" : `${d.name} expires`,
+      href: `/documents/${d.id}`,
+    })),
   ];
   return items;
 }

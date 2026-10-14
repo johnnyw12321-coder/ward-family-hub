@@ -9,6 +9,7 @@ import { Money } from "@/components/shared/money";
 import { PageHeader, SectionHeading } from "@/components/shared/page-header";
 import { CardSkeleton } from "@/components/shared/skeletons";
 import { Badge } from "@/components/ui/badge";
+import { LinkedDocuments } from "@/features/documents/components/linked-documents";
 import { deleteRecurring, setRecurringActive, undoRecurringPayment } from "@/features/finance/actions";
 import { dueLabel, dueState } from "@/features/finance/bills";
 import { EditRecurringButton, SettleButtons } from "@/features/finance/components/recurring-forms";
@@ -128,6 +129,14 @@ async function BillDetail({ params }: { params: PageProps<"/finances/bills/[id]"
           <p className="mt-3 text-xs text-muted-foreground">Coming up: {upcoming.map(formatDate).join(", ")}</p>
         ) : null}
       </section>
+
+      <LinkedDocuments
+        ctx={ctx}
+        filter={{ recurringId: item.id }}
+        title="Documents"
+        attachHref={`/documents/new?recurring=${item.id}&name=${encodeURIComponent(item.name)}`}
+        attachLabel="Attach"
+      />
 
       <section>
         <SectionHeading title="History" />

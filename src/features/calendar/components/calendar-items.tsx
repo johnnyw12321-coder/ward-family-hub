@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckIcon, FlagIcon, ListChecksIcon, ReceiptIcon, TargetIcon, TrendingUpIcon } from "lucide-react";
+import { CheckIcon, FileClockIcon, FlagIcon, ListChecksIcon, ReceiptIcon, TargetIcon, TrendingUpIcon } from "lucide-react";
 import { cn } from "cn";
 import { EVENT_CATEGORY_LABELS, type CalendarItem, type EventCategory } from "../expand";
 
@@ -22,6 +22,7 @@ export function itemDot(item: CalendarItem): string {
   if (item.kind === "bill") return "bg-amber-600";
   if (item.kind === "income") return "bg-emerald-500";
   if (item.kind === "task") return "bg-slate-400";
+  if (item.kind === "document") return "bg-rose-400";
   return "bg-primary";
 }
 
@@ -38,6 +39,8 @@ function KindIcon({ item }: { item: CalendarItem }) {
       return <TargetIcon className={cls} aria-hidden />;
     case "milestone":
       return <FlagIcon className={cls} aria-hidden />;
+    case "document":
+      return <FileClockIcon className={cls} aria-hidden />;
     default:
       return <span className={cn("size-2.5 rounded-full", itemDot(item))} aria-hidden />;
   }
@@ -57,6 +60,8 @@ function kindLabel(item: CalendarItem): string {
       return "Goal deadline";
     case "milestone":
       return "Milestone due";
+    case "document":
+      return "Document expiry";
   }
 }
 

@@ -1,6 +1,8 @@
 /**
  * Household tables included in exports, in dependency order (parents first) so
  * a restore can insert them in sequence. New modules add their tables here.
+ * Sensitive documents are only included when the session is two-factor
+ * verified (RLS); the owner-run script (service role) always includes them.
  */
 export const BACKUP_TABLES = [
   "households",
@@ -25,5 +27,8 @@ export const BACKUP_TABLES = [
   "task_completions",
   "shopping_lists",
   "shopping_items",
+  "document_categories",
+  "documents",
+  "document_files",
   "audit_logs",
 ] as const;

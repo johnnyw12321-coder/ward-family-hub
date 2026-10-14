@@ -1,6 +1,7 @@
 /**
- * Owner-run database backup, independent of the web app. Writes every
- * household table to backups/ward-hub-<timestamp>.json (git-ignored).
+ * Owner-run backup, independent of the web app. Writes every household table
+ * to backups/ward-hub-<timestamp>/data.json and every stored document file to
+ * backups/ward-hub-<timestamp>/files/<storage path> (all git-ignored).
  * Uses the service-role key, so run it only on a trusted computer and keep the
  * output somewhere private (an encrypted drive or password-manager vault).
  *
@@ -37,10 +38,29 @@ async function main() {
     out[table] = rows;
     console.log(`• ${table}: ${rows.length} rows`);
   }
-  mkdirSync("backups", { recursive: true });
-  const file = path.join("backups", `ward-hub-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
-  writeFileSync(file, JSON.stringify({ format: "ward-family-hub-backup", version: 1, exported_at: new Date().toISOString(), tables: out }, null, 2));
-  console.log(`\nSaved ${file}. Store it somewhere private; it contains financial records.`);
+  const dir = path.join("backups", `ward-hub-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    path.join(dir, "data.json"),
+    JSON.stringify({ format: "ward-family-hub-backup", version: 1, exported_at: new Date().toISOString(), tables: out }, null, 2),
+  );
+
+  // Document files, saved under their storage path (household/document/file).
+  const files = (out.document_files ?? []) as { storage_path: string }[];
+  let saved = 0;
+  for (const f of files) {
+    const { data, error } = await db.storage.from("documents").download(f.storage_path);
+    if (error || !data) {
+      console.error(`  ! could not download ${f.storage_path}: ${error?.message ?? "unknown error"}`);
+      continue;
+    }
+    const target = path.join(dir, "files", ...f.storage_path.split("/"));
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, Buffer.from(await data.arrayBuffer()));
+    saved++;
+  }
+  console.log(`• document files: ${saved} of ${files.length}`);
+  console.log(`\nSaved ${dir}. Keep it private and encrypted: it contains financial records and personal documents.`);
 }
 
 main().catch((e: unknown) => {

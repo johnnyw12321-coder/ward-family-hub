@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { DatabaseBackupIcon, DownloadIcon, ShieldCheckIcon } from "lucide-react";
+import { DatabaseBackupIcon, DownloadIcon } from "lucide-react";
 import { cn } from "cn";
 import { memberColorClass } from "@/components/shared/member-color";
 import { PageHeader, SectionHeading } from "@/components/shared/page-header";
 import { CardSkeleton } from "@/components/shared/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getMfaState } from "@/features/documents/queries";
+import { TwoFactorCard } from "@/features/security/components";
 import { HouseholdForm, ProfileForm } from "@/features/settings/settings-forms";
 import { requireHousehold, memberName } from "@/lib/auth/context";
 import { formatInstant } from "@/lib/dates";
@@ -33,6 +35,8 @@ const TABLE_LABELS: Record<string, string> = {
   recurring_items: "Recurring item",
   recurring_payments: "Bill payment",
   household_members: "Member",
+  documents: "Document",
+  document_files: "Document file",
   goals: "Goal",
   goal_contributions: "Goal contribution",
   calendar_events: "Event",
@@ -52,6 +56,7 @@ export default function SettingsPage() {
 
 async function SettingsView() {
   const ctx = await requireHousehold();
+  const mfa = await getMfaState(ctx);
   const { data: audit } = await ctx.supabase
     .from("audit_logs")
     .select("id, actor_id, table_name, action, changed_fields, created_at")
@@ -97,17 +102,14 @@ async function SettingsView() {
         </div>
       </section>
 
-      <section>
+      <section id="security" className="scroll-mt-20">
         <SectionHeading title="Security" />
-        <div className="flex gap-3 rounded-2xl bg-card p-4 text-sm shadow-card ring-1 ring-border/80">
-          <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-          <div className="space-y-1">
-            <p>Every record is protected by database row-level security: only members of this household can read or change it.</p>
-            <p className="text-muted-foreground">
-              Two-factor verification for sensitive documents arrives with the document vault (Phase 4).
-              {ctx.aal === "aal2" ? " This session is already two-factor verified." : ""}
-            </p>
-          </div>
+        <div className="space-y-4 rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
+          <TwoFactorCard enrolled={mfa.enrolled} verifiedFactorIds={mfa.verifiedFactorIds} aal2={mfa.aal2} />
+          <p className="border-t pt-3 text-xs text-muted-foreground">
+            Every record is protected by database row-level security: only members of this household can read or change it.
+            Sensitive documents additionally require a two-factor check in the current session.
+          </p>
         </div>
       </section>
 

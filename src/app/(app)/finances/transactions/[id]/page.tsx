@@ -7,6 +7,7 @@ import { ConfirmAction } from "@/components/shared/confirm-action";
 import { Money } from "@/components/shared/money";
 import { PageHeader } from "@/components/shared/page-header";
 import { CardSkeleton } from "@/components/shared/skeletons";
+import { LinkedDocuments } from "@/features/documents/components/linked-documents";
 import { deleteTransaction } from "@/features/finance/actions";
 import { EditTransaction } from "@/features/finance/components/edit-transaction";
 import { getAccounts, getCategories, getGroupTransactions, getTransaction } from "@/features/finance/queries";
@@ -99,6 +100,16 @@ async function TransactionDetail({ params }: { params: PageProps<"/finances/tran
             ))}
           </ul>
         </section>
+      ) : null}
+
+      {tx.kind === "expense" || tx.kind === "income" ? (
+        <LinkedDocuments
+          ctx={ctx}
+          filter={{ transactionId: tx.id }}
+          title="Receipts"
+          attachHref={`/documents/new?transaction=${tx.id}&category=receipts&name=${encodeURIComponent(`Receipt — ${tx.description}`.slice(0, 160))}`}
+          attachLabel="Attach receipt"
+        />
       ) : null}
 
       {editable ? (

@@ -9,6 +9,7 @@ import { Money } from "@/components/shared/money";
 import { PageHeader } from "@/components/shared/page-header";
 import { CardSkeleton } from "@/components/shared/skeletons";
 import { Badge } from "@/components/ui/badge";
+import { LinkedDocuments } from "@/features/documents/components/linked-documents";
 import { deleteAccount, setAccountArchived } from "@/features/finance/actions";
 import { EditAccountButton, ReconcileButton } from "@/features/finance/components/account-dialogs";
 import { DebtPaymentButton } from "@/features/finance/components/debt-payment-dialog";
@@ -198,6 +199,14 @@ async function AccountDetail({ params }: { params: PageProps<"/finances/accounts
             ))}
         </dl>
       </section>
+
+      <LinkedDocuments
+        ctx={ctx}
+        filter={{ accountId: account.id }}
+        title="Documents"
+        attachHref={`/documents/new?account=${account.id}&category=banking&name=${encodeURIComponent(account.name)}`}
+        attachLabel="Attach"
+      />
 
       <section>
         <div className="mb-2 flex items-center justify-between px-1">

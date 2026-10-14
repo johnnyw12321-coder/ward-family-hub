@@ -60,7 +60,7 @@ export type EventRow = {
 
 export type CalendarItem = {
   key: string;
-  kind: "event" | "bill" | "income" | "task" | "goal" | "milestone";
+  kind: "event" | "bill" | "income" | "task" | "goal" | "milestone" | "document";
   sourceId: string;
   date: CalendarDate; // local day this item appears on
   /** Local start time for timed events, "HH:mm". */
@@ -182,7 +182,7 @@ export function expandBills(items: BillLike[], from: CalendarDate, to: CalendarD
 }
 
 export function sortItems(items: CalendarItem[]): CalendarItem[] {
-  const order: Record<CalendarItem["kind"], number> = { event: 1, bill: 2, income: 3, task: 4, goal: 5, milestone: 6 };
+  const order: Record<CalendarItem["kind"], number> = { event: 1, bill: 2, income: 3, task: 4, goal: 5, milestone: 6, document: 7 };
   return [...items].sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
