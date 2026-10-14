@@ -1,6 +1,7 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { requireSupabaseConfig } from "@/lib/env";
 
 /**
@@ -8,8 +9,10 @@ import { requireSupabaseConfig } from "@/lib/env";
  * Requests run as the signed-in user, so every query is subject to RLS.
  */
 export async function createClient() {
-  // Read the request first: during prerendering this defers the component to
-  // request time instead of failing the build when env vars are absent.
+  // Session work always runs at request time: it reads the clock (token
+  // expiry) and private data, neither of which may be baked into a prerender.
+  // This also keeps the build working when env vars are absent.
+  await connection();
   const cookieStore = await cookies();
   const { url, key } = requireSupabaseConfig();
   return createServerClient(url, key, {
