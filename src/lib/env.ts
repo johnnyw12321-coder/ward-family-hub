@@ -4,8 +4,22 @@
  * Row Level Security protects all data. The service-role key is never read by
  * the web app — it is only used by local CLI scripts (scripts/*.ts).
  */
+/**
+ * The project URL, reduced to its origin. People often paste the REST endpoint
+ * (".../rest/v1/") or a trailing slash from the dashboard; the client adds
+ * those paths itself, so anything after the host would break every request.
+ */
+export function normaliseSupabaseUrl(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  try {
+    return new URL(raw.trim()).origin;
+  } catch {
+    return undefined;
+  }
+}
+
 export function supabaseUrl(): string | undefined {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL || undefined;
+  return normaliseSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 }
 
 export function supabasePublishableKey(): string | undefined {

@@ -14,6 +14,7 @@
  */
 import { existsSync } from "node:fs";
 import { parseArgs } from "node:util";
+import { normaliseSupabaseUrl } from "../src/lib/env";
 import { createClient, type User } from "@supabase/supabase-js";
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
@@ -33,7 +34,7 @@ const { values } = parseArgs({
   },
 });
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const url = normaliseSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 if (!url || !serviceKey) fail("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (in .env.local or your shell).");

@@ -11,12 +11,13 @@
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { normaliseSupabaseUrl } from "../src/lib/env";
 import { createClient } from "@supabase/supabase-js";
 import { BACKUP_TABLES } from "../src/features/settings/backup-tables";
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const url = normaliseSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
   console.error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (in .env.local or your shell).");
