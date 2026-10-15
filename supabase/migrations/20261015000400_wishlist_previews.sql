@@ -14,7 +14,7 @@ alter table public.wish_items add column link_checked_at timestamptz;
 -- Items that were previewed when saved count as checked.
 update public.wish_items set link_checked_at = updated_at where link_url is not null and link_title is not null;
 
-create or replace function public.save_wish_link_preview(
+create or replace function private.save_wish_link_preview(
   p_household_id uuid,
   p_item_id      uuid,
   p_link_url     text,
@@ -59,6 +59,25 @@ begin
 
   return case when p_image_path is not null and v_item.image_source = 'link' then v_item.image_path end;
 end;
+$$;
+revoke all on function private.save_wish_link_preview(uuid, uuid, text, text, text, text) from public;
+grant execute on function private.save_wish_link_preview(uuid, uuid, text, text, text, text) to authenticated;
+
+-- The API entry point runs as the caller; only the private function is elevated.
+create or replace function public.save_wish_link_preview(
+  p_household_id uuid,
+  p_item_id      uuid,
+  p_link_url     text,
+  p_title        text,
+  p_site         text,
+  p_image_path   text
+)
+returns text
+language sql
+security invoker
+set search_path = ''
+as $$
+  select private.save_wish_link_preview(p_household_id, p_item_id, p_link_url, p_title, p_site, p_image_path);
 $$;
 revoke all on function public.save_wish_link_preview(uuid, uuid, text, text, text, text) from public, anon;
 grant execute on function public.save_wish_link_preview(uuid, uuid, text, text, text, text) to authenticated;
