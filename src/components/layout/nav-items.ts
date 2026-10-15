@@ -1,5 +1,6 @@
 import {
   BarChart3Icon,
+  CalculatorIcon,
   CalendarDaysIcon,
   CarIcon,
   FileLockIcon,
@@ -38,6 +39,7 @@ export const MORE_NAV: NavItem[] = [
   { href: "/property", label: "Home & property", icon: WarehouseIcon, description: "Property, maintenance, appliances and warranties" },
   { href: "/vehicles", label: "Vehicles", icon: CarIcon, description: "Servicing, insurance, registration and costs" },
   { href: "/family", label: "Family", icon: UsersIcon, description: "Profiles, school, contacts and milestones" },
+  { href: "/finances/planner", label: "Planner", icon: CalculatorIcon, description: "Play with income and spending what-ifs" },
   { href: "/reports", label: "Reports", icon: BarChart3Icon, description: "Spending, income and net worth over time" },
   { href: "/settings", label: "Settings", icon: SettingsIcon, description: "Profile, household, security and data" },
 ];
@@ -46,7 +48,8 @@ export function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   if (href === "/more")
     return (
-      MORE_NAV.some((i) => pathname.startsWith(i.href)) ||
+      // The Planner lives under Finances, so the Finances tab owns it.
+      MORE_NAV.some((i) => !i.href.startsWith("/finances") && pathname.startsWith(i.href)) ||
       ["/more", "/shopping", "/notifications"].some((p) => pathname.startsWith(p))
     );
   if (href === "/tasks") return pathname.startsWith("/tasks") || pathname.startsWith("/shopping");

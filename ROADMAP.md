@@ -27,6 +27,7 @@ verification against a live Supabase project · ⬜ not started
 - 🟡 Transactions: expense/income/transfer, refunds, categories + subcategories, payment method, person, merchant, notes; edit/delete; search, filters, pagination, CSV export
 - 🟡 Categories: defaults for T&T households, custom categories/subcategories, archive
 - 🟡 Budgets: monthly lines, parent/sub attribution, carry-forward, copy to next month, 80%/100% warnings, pace marker, last-month comparison
+- 🟢 Planner: what-if income & spending plans (weekly/fortnightly/monthly/quarterly/yearly lines, totals per week/fortnight/month/year, autosave, start from real bills/income/budgets, copy to compare). Never touches the ledger.
 - 🟡 Recurring bills and income: schedules, reminders, autopay flag (informational), mark paid/skip, history, undo, pays-down-a-debt option; never auto-paid
 - 🟡 Debts: payoff projections (amortisation), principal vs interest payments, highest-rate tip
 - 🟡 Reports: period presets/custom/annual, MoM/YoY comparisons, income vs spending chart, categories, net worth trend, CSV, print

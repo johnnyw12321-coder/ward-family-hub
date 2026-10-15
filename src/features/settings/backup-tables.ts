@@ -27,6 +27,8 @@ export const BACKUP_TABLES = [
   "task_completions",
   "shopping_lists",
   "shopping_items",
+  "spending_plans",
+  "spending_plan_lines",
   "document_categories",
   "documents",
   "document_files",
