@@ -2,81 +2,97 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { AlertCircleIcon, ArrowRightIcon, CheckCircle2Icon, CircleIcon, SkipForwardIcon } from "lucide-react";
 import { cn } from "cn";
+import { memberColorClass } from "@/components/shared/member-color";
 import { Money } from "@/components/shared/money";
 import { SectionHeading } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { getAccounts, getBudgetProgress, getPaymentsDueBetween, getRecurringItems } from "@/features/finance/queries";
 import type { HouseholdContext } from "@/lib/auth/context";
-import { diffDays, formatDate, monthEnd, monthLabel, monthStart, type CalendarDate } from "@/lib/dates";
+import { addMonths, diffDays, formatDate, monthEnd, monthLabel, monthStart, type CalendarDate } from "@/lib/dates";
 import { budgetStatus, monthElapsedPercent, type AccountType } from "@/lib/finance/calculations";
 import { minorToInput } from "@/lib/money";
 import { monthEntries, type MonthEntry, type MonthGroup } from "../month";
 import { BudgetBar } from "./budget-bar";
+import { MonthTabs } from "./month-tabs";
 import { SettleQuickButton } from "./recurring-forms";
 
+type BudgetRows = Awaited<ReturnType<typeof getBudgetProgress>>;
+type Person = { name: string; color: string };
+type RowProps = {
+  today: CalendarDate;
+  accounts: { id: string; name: string; type: AccountType }[];
+  canWrite: boolean;
+  people: Record<string, Person>;
+};
+
 /**
- * Everything planned for the current month in one place: each bill and
- * expected income with its status (and a one-tap "Pay"), and every budget line
- * with what's been spent. Used on Home and the Finances overview.
+ * Bills, expected income and budget for this month and next, in one place,
+ * each bill with who's responsible and a one-tap "Pay". Next month is there
+ * because pay days don't line up with months: bills for next month are often
+ * paid from this month's salary. Used on Home and the Finances overview.
  */
 export async function ThisMonth({ ctx }: { ctx: HouseholdContext }) {
   const month = monthStart(ctx.today);
-  const end = monthEnd(month);
-  const [items, payments, budget, accounts] = await Promise.all([
+  const next = addMonths(month, 1);
+  const [items, payments, budget, nextBudget, accounts] = await Promise.all([
     getRecurringItems(ctx, { includeInactive: true }),
-    getPaymentsDueBetween(ctx, month, end),
+    getPaymentsDueBetween(ctx, month, monthEnd(next)),
     getBudgetProgress(ctx, month),
+    getBudgetProgress(ctx, next),
     getAccounts(ctx),
   ]);
-  const { bills, income } = monthEntries(
-    items.filter((i) => i.currency === ctx.household.base_currency),
-    payments,
-    month,
-    ctx.today,
-  );
+  const own = items.filter((i) => i.currency === ctx.household.base_currency);
+  const now = monthEntries(own, payments, month, ctx.today);
+  const later = monthEntries(own, payments, next, ctx.today);
+  const rowProps: RowProps = {
+    today: ctx.today,
+    accounts: accounts.map((a) => ({ id: a.id, name: a.name, type: a.type })),
+    canWrite: ctx.canWrite,
+    people: Object.fromEntries(ctx.members.map((m) => [m.user_id, { name: m.display_name, color: m.color }])),
+  };
+  const toPay = (g: MonthGroup) => g.entries.filter((e) => e.status === "due" || e.status === "overdue").length;
   return (
-    <ThisMonthView
-      bills={bills}
-      income={income}
-      budget={budget}
-      month={month}
-      today={ctx.today}
-      accounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type }))}
-      canWrite={ctx.canWrite}
-    />
-  );
-}
-
-export function ThisMonthView({
-  bills,
-  income,
-  budget,
-  month,
-  today,
-  accounts,
-  canWrite,
-}: {
-  bills: MonthGroup;
-  income: MonthGroup;
-  budget: Awaited<ReturnType<typeof getBudgetProgress>>;
-  month: CalendarDate;
-} & RowProps) {
-  const rowProps = { today, accounts, canWrite };
-  return (
-    <section aria-label={`This month, ${monthLabel(month)}`}>
-      <SectionHeading title={`This month · ${monthLabel(month)}`} />
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 [&>*]:min-w-0">
-        <div className="space-y-3">
-          <BillsCard group={bills} {...rowProps} />
-          {income.entries.length ? <IncomeCard group={income} {...rowProps} /> : null}
-        </div>
-        <BudgetCard budget={budget} month={month} today={today} />
-      </div>
+    <section aria-label="Bills and budget">
+      <SectionHeading title="Bills & budget" />
+      <MonthTabs
+        label="Month"
+        tabs={[
+          {
+            key: "this",
+            label: monthLabel(month).split(" ")[0],
+            badge: toPay(now.bills) ? String(toPay(now.bills)) : undefined,
+            content: <MonthPanel {...now} budget={budget} month={month} current {...rowProps} />,
+          },
+          {
+            key: "next",
+            label: monthLabel(next).split(" ")[0],
+            badge: toPay(later.bills) ? String(toPay(later.bills)) : undefined,
+            content: <MonthPanel {...later} budget={nextBudget} month={next} current={false} {...rowProps} />,
+          },
+        ]}
+      />
     </section>
   );
 }
 
-type RowProps = { today: CalendarDate; accounts: { id: string; name: string; type: AccountType }[]; canWrite: boolean };
+export function MonthPanel({
+  bills,
+  income,
+  budget,
+  month,
+  current,
+  ...rowProps
+}: { bills: MonthGroup; income: MonthGroup; budget: BudgetRows; month: CalendarDate; current: boolean } & RowProps) {
+  return (
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 [&>*]:min-w-0">
+      <div className="space-y-3">
+        <BillsCard group={bills} month={month} {...rowProps} />
+        {income.entries.length ? <IncomeCard group={income} month={month} {...rowProps} /> : null}
+      </div>
+      <BudgetCard budget={budget} month={month} today={rowProps.today} current={current} />
+    </div>
+  );
+}
 
 function Card({ title, summary, children, link }: { title: string; summary: ReactNode; children: ReactNode; link: { href: string; label: string } }) {
   return (
@@ -104,10 +120,44 @@ function ProgressLine({ value, total, tone = "primary", label }: { value: number
   );
 }
 
-function BillsCard({ group, ...rowProps }: { group: MonthGroup } & RowProps) {
+function Initial({ person, className }: { person: Person; className?: string }) {
+  return (
+    <span
+      className={cn("flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold", memberColorClass(person.color), className)}
+      aria-hidden
+    >
+      {person.name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
+/** Still to pay, per responsible person, so each of you knows your share. */
+function ShareByPerson({ group, people }: { group: MonthGroup; people: Record<string, Person> }) {
+  const open = group.entries.filter((e) => e.status === "due" || e.status === "overdue");
+  if (!open.length || !group.entries.some((e) => e.item.person_user_id)) return null;
+  const totals = new Map<string, number>();
+  for (const e of open) {
+    const key = e.item.person_user_id && people[e.item.person_user_id] ? e.item.person_user_id : "";
+    totals.set(key, (totals.get(key) ?? 0) + e.amount);
+  }
+  return (
+    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground" aria-label="Still to pay by person">
+      {[...totals].map(([id, amount]) => (
+        <li key={id || "none"} className="flex items-center gap-1.5">
+          {id ? <Initial person={people[id]} /> : null}
+          <span>
+            {id ? people[id].name : "Not assigned"} <Money minor={amount} trimZeroCents className="font-medium text-foreground" />
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function BillsCard({ group, month, ...rowProps }: { group: MonthGroup; month: CalendarDate } & RowProps) {
   return (
     <Card
-      title="Bills"
+      title={`Bills · ${monthLabel(month).split(" ")[0]}`}
       link={{ href: "/finances/bills", label: "All bills" }}
       summary={
         group.entries.length ? (
@@ -123,7 +173,8 @@ function BillsCard({ group, ...rowProps }: { group: MonthGroup } & RowProps) {
                 "all done"
               )}
             </p>
-            <ProgressLine value={group.settled} total={group.total} label="Share of this month's bills paid" />
+            <ProgressLine value={group.settled} total={group.total} label={`Share of ${monthLabel(month)} bills paid`} />
+            <ShareByPerson group={group} people={rowProps.people} />
             {group.overdueCount ? (
               <p className="text-xs font-medium text-destructive">
                 {group.overdueCount === 1 ? "1 bill is overdue" : `${group.overdueCount} bills are overdue`}
@@ -136,12 +187,12 @@ function BillsCard({ group, ...rowProps }: { group: MonthGroup } & RowProps) {
       {group.entries.length ? (
         <ul className="divide-y border-t">
           {group.entries.map((e) => (
-            <EntryRow key={`${e.item.id}-${e.dueDate}`} entry={e} {...rowProps} />
+            <EntryRow key={`${e.item.id}-${e.dueDate}`} entry={e} month={month} {...rowProps} />
           ))}
         </ul>
       ) : (
         <p className="border-t px-4 py-4 text-sm text-muted-foreground">
-          No bills due this month.{" "}
+          No bills due in {monthLabel(month)}.{" "}
           <Link href="/finances/bills" className="font-medium text-primary">
             Add your regular bills
           </Link>{" "}
@@ -152,7 +203,7 @@ function BillsCard({ group, ...rowProps }: { group: MonthGroup } & RowProps) {
   );
 }
 
-function IncomeCard({ group, ...rowProps }: { group: MonthGroup } & RowProps) {
+function IncomeCard({ group, month, ...rowProps }: { group: MonthGroup; month: CalendarDate } & RowProps) {
   return (
     <Card
       title="Income expected"
@@ -166,14 +217,14 @@ function IncomeCard({ group, ...rowProps }: { group: MonthGroup } & RowProps) {
     >
       <ul className="divide-y border-t">
         {group.entries.map((e) => (
-          <EntryRow key={`${e.item.id}-${e.dueDate}`} entry={e} {...rowProps} />
+          <EntryRow key={`${e.item.id}-${e.dueDate}`} entry={e} month={month} {...rowProps} />
         ))}
       </ul>
     </Card>
   );
 }
 
-/** DD/MM — the year is implied by "this month" (overdue carry-overs keep it). */
+/** DD/MM within the month shown; carried-over dates keep their year. */
 function shortDate(date: CalendarDate, month: CalendarDate): string {
   return date < month ? formatDate(date) : formatDate(date).slice(0, 5);
 }
@@ -185,16 +236,19 @@ function statusText(e: MonthEntry, today: CalendarDate, month: CalendarDate): st
   if (e.status === "skipped") return `Skipped · ${on}`;
   const days = diffDays(e.dueDate, today);
   if (days < 0) return `${income ? "Not recorded" : "Overdue"} ${-days === 1 ? "1 day" : `${-days} days`} · ${on}`;
+  // A later occurrence can only be settled after the earlier one.
+  if (!e.isNext && e.item.is_active && e.item.next_due_date < month) return `Due ${on} · after the ${shortDate(e.item.next_due_date, month)} one`;
   if (days === 0) return "Due today";
   if (days === 1) return `Due tomorrow · ${on}`;
   return `Due in ${days} days · ${on}`;
 }
 
-function EntryRow({ entry: e, today, accounts, canWrite }: { entry: MonthEntry } & RowProps) {
+function EntryRow({ entry: e, month, today, accounts, canWrite, people }: { entry: MonthEntry; month: CalendarDate } & RowProps) {
   const income = e.item.direction === "income";
   const settled = e.status === "paid" || e.status === "skipped";
   const Icon = e.status === "paid" ? CheckCircle2Icon : e.status === "skipped" ? SkipForwardIcon : e.status === "overdue" ? AlertCircleIcon : CircleIcon;
   const canSettle = canWrite && e.isNext && e.item.is_active && !settled;
+  const person = e.item.person_user_id ? people[e.item.person_user_id] : undefined;
   return (
     <li className="flex items-center gap-3 px-4 py-2.5">
       <Icon
@@ -205,9 +259,13 @@ function EntryRow({ entry: e, today, accounts, canWrite }: { entry: MonthEntry }
         aria-hidden
       />
       <Link href={`/finances/bills/${e.item.id}`} className="min-w-0 flex-1 py-0.5">
-        <span className={cn("block truncate text-sm font-medium", settled && "text-muted-foreground")}>{e.item.name}</span>
+        <span className={cn("flex items-center gap-1.5 text-sm font-medium", settled && "text-muted-foreground")}>
+          <span className="truncate">{e.item.name}</span>
+          {person ? <Initial person={person} className="size-4 text-[9px]" /> : null}
+          {person ? <span className="sr-only">, {person.name}</span> : null}
+        </span>
         <span className={cn("block truncate text-xs", e.status === "overdue" && !income ? "font-medium text-destructive" : "text-muted-foreground")}>
-          {statusText(e, today, monthStart(today))}
+          {statusText(e, today, month)}
         </span>
       </Link>
       <div className="shrink-0 text-right">
@@ -237,7 +295,7 @@ function EntryRow({ entry: e, today, accounts, canWrite }: { entry: MonthEntry }
   );
 }
 
-function BudgetCard({ budget, month, today }: { budget: Awaited<ReturnType<typeof getBudgetProgress>>; month: CalendarDate; today: CalendarDate }) {
+function BudgetCard({ budget, month, today, current }: { budget: BudgetRows; month: CalendarDate; today: CalendarDate; current: boolean }) {
   const lines = budget.filter((b) => b.allocation_id);
   const unbudgeted = budget.find((b) => !b.allocation_id)?.spent_minor ?? 0;
   const totals = lines.reduce((acc, l) => ({ available: acc.available + l.allocated_minor + l.carried_in_minor, spent: acc.spent + l.spent_minor }), {
@@ -245,12 +303,13 @@ function BudgetCard({ budget, month, today }: { budget: Awaited<ReturnType<typeo
     spent: 0,
   });
   const left = totals.available - totals.spent;
-  const pace = monthElapsedPercent(today, month);
+  const pace = current ? monthElapsedPercent(today, month) : undefined;
   const flagged = lines.filter((l) => budgetStatus(l.allocated_minor, l.carried_in_minor, l.spent_minor).level !== "ok").length;
+  const href = current ? "/finances/budgets" : `/finances/budgets?month=${month.slice(0, 7)}`;
   return (
     <Card
-      title="Budget"
-      link={{ href: "/finances/budgets", label: lines.length ? "Edit budget" : "Set budget" }}
+      title={`Budget · ${monthLabel(month).split(" ")[0]}`}
+      link={{ href, label: lines.length ? "Edit budget" : "Set budget" }}
       summary={
         lines.length ? (
           <>
@@ -261,9 +320,10 @@ function BudgetCard({ budget, month, today }: { budget: Awaited<ReturnType<typeo
                 <Money minor={Math.abs(left)} trimZeroCents /> {left < 0 ? "over" : "left"}
               </span>
             </p>
-            <ProgressLine value={totals.spent} total={totals.available} tone={left < 0 ? "destructive" : "primary"} label="Share of this month's budget spent" />
+            <ProgressLine value={totals.spent} total={totals.available} tone={left < 0 ? "destructive" : "primary"} label={`Share of ${monthLabel(month)} budget spent`} />
             <p className="text-xs text-muted-foreground">
-              {Math.round(pace)}% of the month gone{flagged ? ` · ${flagged === 1 ? "1 line needs" : `${flagged} lines need`} attention` : ""}
+              {pace !== undefined ? `${Math.round(pace)}% of the month gone` : `Starts ${formatDate(month)}`}
+              {flagged ? ` · ${flagged === 1 ? "1 line needs" : `${flagged} lines need`} attention` : ""}
             </p>
           </>
         ) : null
@@ -291,9 +351,12 @@ function BudgetCard({ budget, month, today }: { budget: Awaited<ReturnType<typeo
         </div>
       ) : (
         <div className="border-t px-4 py-4">
-          <p className="text-sm text-muted-foreground">No budget for {monthLabel(month)} yet. Set amounts for groceries, fuel, fun and the rest to track them here.</p>
+          <p className="text-sm text-muted-foreground">
+            No budget for {monthLabel(month)} yet.{" "}
+            {current ? "Set amounts for groceries, fuel, fun and the rest to track them here." : "Copy this month's budget forward or set new amounts."}
+          </p>
           <Button asChild size="sm" className="mt-3">
-            <Link href="/finances/budgets">Set this month&apos;s budget</Link>
+            <Link href={href}>Set the {monthLabel(month).split(" ")[0]} budget</Link>
           </Button>
         </div>
       )}

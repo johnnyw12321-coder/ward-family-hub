@@ -79,6 +79,20 @@ describe("this month's bills", () => {
     expect(bills).toMatchObject({ settled: 300_00, outstanding: 0, total: 300_00 });
   });
 
+  it("shows next month's bills so they can be paid early from this month's pay", () => {
+    const today = "2026-10-21"; // the day after Adanna's pay day
+    const items = [
+      item({ id: "internet", anchor_date: "2026-01-05", next_due_date: "2026-11-05", person_user_id: "adanna" }),
+      item({ id: "car", anchor_date: "2026-01-28", next_due_date: "2026-10-28", person_user_id: "jonathan" }),
+      item({ id: "water", anchor_date: "2026-01-02", next_due_date: "2026-12-02" }),
+    ];
+    // Water for November was already paid early, on 21/10.
+    const payments: MonthPayment[] = [{ recurring_id: "water", due_date: "2026-11-02", status: "paid", amount_minor: 150_00 }];
+    const { bills } = monthEntries(items, payments, "2026-11-01", today);
+    // October's car payment isn't overdue yet, so it stays in October; November's comes after it.
+    expect(summary(bills.entries)).toEqual(["internet 2026-11-05 due next", "car 2026-11-28 due", "water 2026-11-02 paid"]);
+  });
+
   it("keeps income separate from bills", () => {
     const salary = item({ id: "salary", direction: "income", anchor_date: "2026-01-25", next_due_date: "2026-10-25", amount_minor: 12_500_00 });
     const { bills, income } = monthEntries([salary], [], MONTH, TODAY);

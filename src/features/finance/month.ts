@@ -70,17 +70,14 @@ export function monthEntries(
     const dates = occurrencesBetween(item.anchor_date, item.frequency, item.interval_count, from, end, item.end_date).filter(
       (d) => compareDates(d, item.next_due_date) >= 0,
     );
-    // Before this month only the oldest unsettled occurrence is shown; the rest stay on the bill page.
-    const shown = dates.filter((d, i) => i === 0 || compareDates(d, month) >= 0);
-    shown.forEach((dueDate, i) =>
-      entries.push({
-        item,
-        dueDate,
-        status: compareDates(dueDate, today) < 0 ? "overdue" : "due",
-        amount: item.amount_minor,
-        isNext: i === 0,
-      }),
-    );
+    // From before this month, only the oldest unsettled occurrence, and only
+    // once it is overdue; the rest stay on the bill page.
+    dates.forEach((dueDate, i) => {
+      const inMonth = compareDates(dueDate, month) >= 0;
+      const overdue = compareDates(dueDate, today) < 0;
+      if (!inMonth && !(i === 0 && overdue)) return;
+      entries.push({ item, dueDate, status: overdue ? "overdue" : "due", amount: item.amount_minor, isNext: i === 0 });
+    });
   }
 
   entries.sort((a, b) => ORDER[a.status] - ORDER[b.status] || compareDates(a.dueDate, b.dueDate) || a.item.name.localeCompare(b.item.name));
