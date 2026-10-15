@@ -8,7 +8,7 @@ import { getActionContext } from "@/lib/auth/context";
 import { parseMoney } from "@/lib/money";
 import { fetchLinkPreview, MAX_IMAGE_BYTES, removeImage, storePreviewImage, WISHLIST_BUCKET } from "./images";
 import { sniffImage } from "./link-preview";
-import { claimSchema, claimUpdateSchema, wishSchema } from "./schemas";
+import { claimSchema, claimUpdateSchema, listKey, wishSchema } from "./schemas";
 
 const uuid = z.uuid();
 const empty = (v: string | undefined | null) => (v ? v : null);
@@ -61,6 +61,7 @@ export async function saveWish(raw: unknown): Promise<ActionResult<{ id: string 
   if (linkChanged) {
     row.link_title = preview?.title ?? null;
     row.link_site = preview?.site ?? null;
+    row.link_checked_at = link ? new Date().toISOString() : null;
   }
   const res = v.id
     ? await ctx.supabase.from("wish_items").update(row).eq("household_id", ctx.household.id).eq("id", v.id).select("id")
@@ -243,4 +244,54 @@ export async function releaseClaim(id: string): Promise<ActionResult> {
   }
   refresh();
   return ok(null, "Back up for grabs");
+}
+
+/**
+ * Fill in link previews for a list's items that don't have one yet, so items
+ * added before previews existed catch up. Runs when someone opens a list,
+ * owner or not: the preview fields are saved through a function that can set
+ * nothing else. `retry` re-checks specific items whose shop failed before.
+ */
+export async function fillLinkPreviews(listKeyValue: string, retry: string[] = []): Promise<ActionResult<{ updated: number }>> {
+  if (!listKey.safeParse(listKeyValue).success || retry.some((id) => !uuid.safeParse(id).success)) return fail("Invalid list.");
+  const auth = await getActionContext();
+  if (!auth.ok) return fail(auth.error);
+  const { ctx } = auth;
+  const [kind, target] = [listKeyValue[0], listKeyValue.slice(2)];
+  let q = ctx.supabase
+    .from("wish_items")
+    .select("id, link_url, image_source, image_path, link_checked_at")
+    .eq("household_id", ctx.household.id)
+    .not("link_url", "is", null)
+    .is("removed_at", null)
+    .eq(kind === "m" ? "owner_user_id" : "family_member_id", target);
+  q = retry.length ? q.in("id", retry) : q.is("link_checked_at", null);
+  const { data, error } = await q.limit(6);
+  if (error) {
+    logServerError("fillLinkPreviews", error);
+    return fail("Couldn't check links.");
+  }
+  let updated = 0;
+  await Promise.all(
+    (data ?? []).map(async (item) => {
+      const preview = await fetchLinkPreview(item.link_url as string);
+      const picture = preview?.imageUrl && item.image_source !== "photo" ? await storePreviewImage(ctx, item.id, preview.imageUrl) : null;
+      const { data: old, error: rpcError } = await ctx.supabase.rpc("save_wish_link_preview", {
+        p_household_id: ctx.household.id,
+        p_item_id: item.id,
+        p_link_url: item.link_url,
+        p_title: preview?.title ?? null,
+        p_site: preview?.site ?? null,
+        p_image_path: picture,
+      });
+      if (rpcError) {
+        logServerError("fillLinkPreviews.save", rpcError);
+        await removeImage(ctx, picture);
+        return;
+      }
+      if (old) await removeImage(ctx, old as string);
+      if (preview) updated += 1;
+    }),
+  );
+  return ok({ updated });
 }

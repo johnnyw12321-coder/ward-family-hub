@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/dates";
 import { minorToInput } from "@/lib/money";
 import type { WishClaim, WishItem, WishList } from "../queries";
 import { CLAIM_STATUS_LABELS, OCCASION_LABELS, type Occasion } from "../schemas";
+import { RetryPreviewButton } from "./preview-filler";
 import { ClaimControls, ItemControls } from "./wish-controls";
 
 /** One idea on a list, with what the viewer is allowed to see and do. */
@@ -88,10 +89,21 @@ export function ItemCard({
           <LinkIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium">{item.link_site ?? new URL(item.link_url).hostname.replace(/^www\./, "")}</span>
-            {item.link_title && item.link_title !== item.title ? <span className="block truncate text-xs text-muted-foreground">{item.link_title}</span> : null}
+            {item.link_title && item.link_title !== item.title ? (
+              <span className="line-clamp-2 text-xs text-muted-foreground">{item.link_title}</span>
+            ) : null}
           </span>
           <ExternalLinkIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         </a>
+      ) : null}
+      {item.link_url && !item.image_url && item.link_checked_at && !item.link_title ? (
+        <div className="flex flex-wrap items-center justify-between gap-x-2 text-xs text-muted-foreground">
+          <span>
+            {new URL(item.link_url).hostname.replace(/^www\./, "")} doesn&apos;t share a preview.
+            {editable ? " Add a photo or a screenshot with Edit." : ""}
+          </span>
+          {viewer.canWrite ? <RetryPreviewButton list={list.key} itemId={item.id} /> : null}
+        </div>
       ) : null}
 
       {mode !== "own" && (mine || theirs.length) ? (

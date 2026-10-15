@@ -24,6 +24,7 @@ export type WishItem = {
   image_source: "photo" | "link" | null;
   link_title: string | null;
   link_site: string | null;
+  link_checked_at: string | null;
   /** Short-lived link to the picture, when there is one the viewer may see. */
   image_url: string | null;
 };
@@ -62,7 +63,7 @@ const money = (v: unknown) => {
 };
 
 const ITEM_COLUMNS =
-  "id, owner_user_id, family_member_id, title, details, link_url, store, price_minor, priority, is_surprise, received_on, removed_at, created_by, created_at, image_path, image_source, link_title, link_site";
+  "id, owner_user_id, family_member_id, title, details, link_url, store, price_minor, priority, is_surprise, received_on, removed_at, created_by, created_at, image_path, image_source, link_title, link_site, link_checked_at";
 
 /**
  * Everyone who can have a list: each household member (their own list) and

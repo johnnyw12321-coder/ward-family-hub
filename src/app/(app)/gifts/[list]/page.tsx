@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader, SectionHeading } from "@/components/shared/page-header";
 import { CardSkeleton } from "@/components/shared/skeletons";
 import { ItemCard } from "@/features/gifts/components/item-card";
+import { PreviewFiller } from "@/features/gifts/components/preview-filler";
 import { AddWishButton } from "@/features/gifts/components/wish-controls";
 import { birthdayText } from "@/features/gifts/format";
 import { findList, getWishes, getWishLists, type WishItem, type WishList } from "@/features/gifts/queries";
@@ -81,6 +82,8 @@ async function ListView({ params }: { params: PageProps<"/gifts/[list]">["params
           </span>
         </p>
       ) : null}
+
+      <PreviewFiller list={list.key} pending={visible.filter((i) => i.link_url && !i.link_checked_at && !i.removed_at).length} />
 
       {open.length ? (
         <ul className="space-y-3">

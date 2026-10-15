@@ -112,14 +112,82 @@ describe("wishlists", () => {
     expect(await count(f.outsider, `select 1 from storage.objects where name = $1`, [path])).toBe(0);
   });
 
-  it("lets only the people who can edit an item add its photo", async () => {
+  it("lets only the people who can edit an item set its photo", async () => {
     const own = `${f.householdA}/${bag}/0f0f0f0f-0000-4000-8000-000000000002`;
-    await expect(
-      asUser(db, f.jonathan, (tx) => tx.query(`insert into storage.objects (bucket_id, name) values ('wishlist', $1)`, [own])),
-    ).rejects.toThrow(/row-level security/);
-    await asUser(db, f.adanna, (tx) => tx.query(`insert into storage.objects (bucket_id, name) values ('wishlist', $1)`, [own]));
-    // Her list is shared, so Jonathan can still see her photo.
+    await asUser(db, f.adanna, async (tx) => {
+      await tx.query(`insert into storage.objects (bucket_id, name) values ('wishlist', $1)`, [own]);
+      await tx.query(`update public.wish_items set image_path = $1, image_source = 'photo' where id = $2`, [own, bag]);
+    });
+    // Her list is shared, so Jonathan can see her photo but can't swap it.
     expect(await count(f.jonathan, `select 1 from storage.objects where name = $1`, [own])).toBe(1);
+    expect(await count(f.jonathan, `update public.wish_items set image_path = null, image_source = null where id = $1 returning id`, [bag])).toBe(0);
+  });
+
+  it("lets anyone who can see an item fill in its link preview, and nothing else", async () => {
+    const link = "https://shop.example.tt/watch";
+    const watch = await asUser(db, f.adanna, async (tx) =>
+      (
+        await tx.query<{ id: string }>(`insert into public.wish_items (household_id, owner_user_id, title, link_url) values ($1, $2, 'Watch', $3) returning id`, [
+          f.householdA,
+          f.adanna,
+          link,
+        ])
+      ).rows[0].id,
+    );
+    const picture = `${f.householdA}/${watch}/0f0f0f0f-0000-4000-8000-000000000003`;
+    // Jonathan opens her list: the picture is copied in and the preview attached.
+    await asUser(db, f.jonathan, async (tx) => {
+      await tx.query(`insert into storage.objects (bucket_id, name) values ('wishlist', $1)`, [picture]);
+      await tx.query(`select public.save_wish_link_preview($1, $2, $3, 'Steel watch', 'Shop TT', $4)`, [f.householdA, watch, link, picture]);
+    });
+    const r = await db.query<{ link_title: string; image_source: string; title: string; checked: boolean }>(
+      `select link_title, image_source, title, link_checked_at is not null as checked from public.wish_items where id = $1`,
+      [watch],
+    );
+    expect(r.rows[0]).toEqual({ link_title: "Steel watch", image_source: "link", title: "Watch", checked: true });
+
+    // It never replaces a photo someone took.
+    const photo = `${f.householdA}/${bag}/0f0f0f0f-0000-4000-8000-000000000002`;
+    await db.query(`update public.wish_items set link_url = $1 where id = $2`, [link, bag]);
+    const linkPicture = `${f.householdA}/${bag}/0f0f0f0f-0000-4000-8000-000000000005`;
+    await asUser(db, f.jonathan, (tx) => tx.query(`select public.save_wish_link_preview($1, $2, $3, 'x', 'y', $4)`, [f.householdA, bag, link, linkPicture]));
+    expect((await db.query<{ image_path: string }>(`select image_path from public.wish_items where id = $1`, [bag])).rows[0].image_path).toBe(photo);
+
+    // A stale link is ignored, and pictures must live in the item's own folder.
+    await asUser(db, f.jonathan, (tx) => tx.query(`select public.save_wish_link_preview($1, $2, 'https://old.example', 'Old', 'Old', null)`, [f.householdA, watch]));
+    expect((await db.query<{ link_title: string }>(`select link_title from public.wish_items where id = $1`, [watch])).rows[0].link_title).toBe("Steel watch");
+    await expect(
+      asUser(db, f.jonathan, (tx) =>
+        tx.query(`select public.save_wish_link_preview($1, $2, $3, 'x', 'y', $4)`, [f.householdA, watch, link, `${f.householdA}/${bag}/0f0f0f0f-0000-4000-8000-000000000009`]),
+      ),
+    ).rejects.toThrow(/Invalid picture/);
+    // Outsiders and viewers can't use it at all.
+    await expect(
+      asUser(db, f.outsider, (tx) => tx.query(`select public.save_wish_link_preview($1, $2, $3, 'x', 'y', null)`, [f.householdA, watch, link])),
+    ).rejects.toThrow(/permission/);
+    await expect(
+      asUser(db, f.viewer, (tx) => tx.query(`select public.save_wish_link_preview($1, $2, $3, 'x', 'y', null)`, [f.householdA, watch, link])),
+    ).rejects.toThrow(/permission/);
+  });
+
+  it("won't reveal or touch a surprise for its recipient through the preview function", async () => {
+    const link = "https://shop.example.tt/ring";
+    const ring = await asUser(db, f.jonathan, async (tx) =>
+      (
+        await tx.query<{ id: string }>(
+          `insert into public.wish_items (household_id, owner_user_id, title, link_url, is_surprise) values ($1, $2, 'Ring', $3, true) returning id`,
+          [f.householdA, f.adanna, link],
+        )
+      ).rows[0].id,
+    );
+    await expect(
+      asUser(db, f.adanna, (tx) => tx.query(`select public.save_wish_link_preview($1, $2, $3, 'x', 'y', null)`, [f.householdA, ring, link])),
+    ).rejects.toThrow(/no longer exists/);
+    await expect(
+      asUser(db, f.adanna, (tx) =>
+        tx.query(`insert into storage.objects (bucket_id, name) values ('wishlist', $1)`, [`${f.householdA}/${ring}/0f0f0f0f-0000-4000-8000-000000000004`]),
+      ),
+    ).rejects.toThrow(/row-level security/);
   });
 
   it("only accepts web links", async () => {
