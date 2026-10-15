@@ -95,6 +95,33 @@ describe("wishlists", () => {
     ).rejects.toThrow(/row-level security/);
   });
 
+  it("keeps a surprise's photo as hidden as the surprise", async () => {
+    const fileId = "0f0f0f0f-0000-4000-8000-000000000001";
+    const surprise = await asUser(db, f.jonathan, async (tx) => {
+      const r = await tx.query<{ id: string }>(
+        `insert into public.wish_items (household_id, owner_user_id, title, is_surprise) values ($1, $2, 'Gold bangle', true) returning id`,
+        [f.householdA, f.adanna],
+      );
+      const path = `${f.householdA}/${r.rows[0].id}/${fileId}`;
+      await tx.query(`insert into storage.objects (bucket_id, name) values ('wishlist', $1)`, [path]);
+      return r.rows[0].id;
+    });
+    const path = `${f.householdA}/${surprise}/${fileId}`;
+    expect(await count(f.jonathan, `select 1 from storage.objects where name = $1`, [path])).toBe(1);
+    expect(await count(f.adanna, `select 1 from storage.objects where name = $1`, [path])).toBe(0);
+    expect(await count(f.outsider, `select 1 from storage.objects where name = $1`, [path])).toBe(0);
+  });
+
+  it("lets only the people who can edit an item add its photo", async () => {
+    const own = `${f.householdA}/${bag}/0f0f0f0f-0000-4000-8000-000000000002`;
+    await expect(
+      asUser(db, f.jonathan, (tx) => tx.query(`insert into storage.objects (bucket_id, name) values ('wishlist', $1)`, [own])),
+    ).rejects.toThrow(/row-level security/);
+    await asUser(db, f.adanna, (tx) => tx.query(`insert into storage.objects (bucket_id, name) values ('wishlist', $1)`, [own]));
+    // Her list is shared, so Jonathan can still see her photo.
+    expect(await count(f.jonathan, `select 1 from storage.objects where name = $1`, [own])).toBe(1);
+  });
+
   it("only accepts web links", async () => {
     await expect(
       asUser(db, f.adanna, (tx) =>

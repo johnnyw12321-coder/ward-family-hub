@@ -61,6 +61,22 @@ async function main() {
     saved++;
   }
   console.log(`• document files: ${saved} of ${files.length}`);
+
+  // Wishlist pictures, under files-wishlist/<household>/<item>/<file>.
+  const pictures = ((out.wish_items ?? []) as { image_path: string | null }[]).filter((i) => i.image_path);
+  let savedPictures = 0;
+  for (const p of pictures) {
+    const { data, error } = await db.storage.from("wishlist").download(p.image_path!);
+    if (error || !data) {
+      console.error(`  ! could not download ${p.image_path}: ${error?.message ?? "unknown error"}`);
+      continue;
+    }
+    const target = path.join(dir, "files-wishlist", ...p.image_path!.split("/"));
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, Buffer.from(await data.arrayBuffer()));
+    savedPictures++;
+  }
+  console.log(`• wishlist pictures: ${savedPictures} of ${pictures.length}`);
   console.log(`\nSaved ${dir}. Keep it private and encrypted: it contains financial records and personal documents.`);
 }
 

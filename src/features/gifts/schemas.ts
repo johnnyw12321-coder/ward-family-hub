@@ -23,7 +23,8 @@ const optional = (max: number) => z.string().trim().max(max, `Keep this under ${
 export const wishSchema = z.object({
   id: z.union([z.uuid(), z.literal("")]).optional(),
   list: listKey,
-  title: z.string().trim().min(1, "Say what it is").max(120),
+  // Can be left empty when there's a link: the link's own title is used.
+  title: z.string().trim().max(120),
   details: optional(1000),
   link: z
     .string()
@@ -34,7 +35,7 @@ export const wishSchema = z.object({
   store: optional(160),
   price: nonNegativeMoney.optional(),
   priority: z.enum(["love", "like"]),
-});
+}).refine((v) => v.title || v.link, { path: ["title"], message: "Say what it is, or paste a link" });
 export type WishInput = z.infer<typeof wishSchema>;
 
 export const claimSchema = z.object({

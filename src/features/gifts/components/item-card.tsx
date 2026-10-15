@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, EyeOffIcon, HeartIcon, MapPinIcon } from "lucide-react";
+import { ExternalLinkIcon, EyeOffIcon, HeartIcon, LinkIcon, MapPinIcon } from "lucide-react";
 import { Money } from "@/components/shared/money";
 import { Badge } from "@/components/ui/badge";
 import { memberName, type Member } from "@/lib/auth/context";
@@ -39,18 +39,22 @@ export function ItemCard({
     priority: item.priority,
   };
   return (
-    <li className="space-y-3 rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
+    <li className="space-y-3 overflow-hidden rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
+      {item.image_url ? (
+        <a
+          href={item.link_url ?? item.image_url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="-mx-4 -mt-4 block bg-muted"
+          aria-label={item.link_url ? `Open the link for ${item.title}` : `View the photo of ${item.title}`}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed storage URL */}
+          <img src={item.image_url} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
+        </a>
+      ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <h3 className="font-semibold">
-            {item.link_url ? (
-              <a href={item.link_url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 hover:underline">
-                {item.title} <ExternalLinkIcon className="size-3.5 text-muted-foreground" aria-label="(opens the link)" />
-              </a>
-            ) : (
-              item.title
-            )}
-          </h3>
+          <h3 className="font-semibold">{item.title}</h3>
           <div className="flex flex-wrap gap-1.5">
             {item.priority === "love" ? (
               <Badge variant="secondary" className="gap-1">
@@ -73,6 +77,21 @@ export function ItemCard({
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <MapPinIcon className="size-3.5 shrink-0" aria-hidden /> {item.store}
         </p>
+      ) : null}
+      {item.link_url ? (
+        <a
+          href={item.link_url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-sm transition-colors hover:bg-muted"
+        >
+          <LinkIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{item.link_site ?? new URL(item.link_url).hostname.replace(/^www\./, "")}</span>
+            {item.link_title && item.link_title !== item.title ? <span className="block truncate text-xs text-muted-foreground">{item.link_title}</span> : null}
+          </span>
+          <ExternalLinkIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        </a>
       ) : null}
 
       {mode !== "own" && (mine || theirs.length) ? (
@@ -109,7 +128,7 @@ export function ItemCard({
           ) : (
             <span />
           )}
-          {editable && !item.removed_at ? <ItemControls id={item.id} initial={initial} mode={mode} received={Boolean(item.received_on)} /> : null}
+          {editable && !item.removed_at ? <ItemControls id={item.id} initial={initial} mode={mode} received={Boolean(item.received_on)} image={item.image_url} /> : null}
         </div>
       ) : null}
     </li>
