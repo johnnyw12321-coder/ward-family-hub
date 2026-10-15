@@ -130,16 +130,3 @@ export function parsePreview(html: string, pageUrl: string): LinkPreview {
   const title = tidyTitle(clean(first("og:title", "twitter:title") ?? product.name ?? docTitle, 200), host);
   return { title, site, imageUrl, priceMinor };
 }
-
-export type PreviewImageType = "image/jpeg" | "image/png" | "image/webp" | "image/gif";
-
-/** Identify a picture by its first bytes; anything else (SVG, HTML…) is refused. */
-export function sniffImage(bytes: Uint8Array): PreviewImageType | null {
-  if (bytes.length < 12) return null;
-  const ascii = (start: number, len: number) => String.fromCharCode(...bytes.subarray(start, start + len));
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
-  if (bytes[0] === 0x89 && ascii(1, 3) === "PNG") return "image/png";
-  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return "image/webp";
-  if (ascii(0, 6) === "GIF87a" || ascii(0, 6) === "GIF89a") return "image/gif";
-  return null;
-}

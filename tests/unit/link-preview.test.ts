@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePreview, sniffImage } from "@/features/gifts/link-preview";
+import { parsePreview } from "@/features/gifts/link-preview";
 import { checkUrl, isPublicAddress } from "@/lib/safe-fetch";
 
 describe("link previews", () => {
@@ -33,12 +33,6 @@ describe("link previews", () => {
 
   it("refuses non-web picture links", () => {
     expect(parsePreview(`<head><meta property="og:image" content="javascript:alert(1)"></head>`, "https://a.tt").imageUrl).toBeNull();
-  });
-
-  it("only accepts real picture formats", () => {
-    expect(sniffImage(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0]))).toBe("image/jpeg");
-    expect(sniffImage(new TextEncoder().encode("GIF89a........"))).toBe("image/gif");
-    expect(sniffImage(new TextEncoder().encode("<svg xmlns='http://www.w3.org/2000/svg'>"))).toBeNull();
   });
 });
 

@@ -2,7 +2,6 @@ import "server-only";
 import { daysUntilBirthday, getFamilyMembers } from "@/features/family/queries";
 import type { HouseholdContext } from "@/lib/auth/context";
 import { addDays, type CalendarDate } from "@/lib/dates";
-import { signedImageUrls } from "./images";
 import type { Occasion } from "./schemas";
 
 export type WishItem = {
@@ -25,8 +24,6 @@ export type WishItem = {
   link_title: string | null;
   link_site: string | null;
   link_checked_at: string | null;
-  /** Short-lived link to the picture, when there is one the viewer may see. */
-  image_url: string | null;
 };
 
 export type WishClaim = {
@@ -116,15 +113,7 @@ export async function getWishes(ctx: HouseholdContext, list?: WishList): Promise
   if (list?.familyMemberId) q = q.eq("family_member_id", list.familyMemberId);
   const { data, error } = await q;
   if (error) fail("gift ideas", error);
-  const rows = data as Record<string, unknown>[];
-  // Pictures are only shown on a list page, not the overview.
-  const paths = list ? rows.map((r) => r.image_path as string | null).filter((p): p is string => Boolean(p)) : [];
-  const urls = await signedImageUrls(ctx, paths);
-  const items = rows.map((r) => ({
-    ...(r as WishItem),
-    price_minor: money(r.price_minor),
-    image_url: r.image_path ? (urls.get(r.image_path as string) ?? null) : null,
-  }));
+  const items = (data as Record<string, unknown>[]).map((r) => ({ ...(r as WishItem), price_minor: money(r.price_minor) }));
   if (!items.length) return { items, claims: [] };
   const { data: claims, error: claimError } = await ctx.supabase
     .from("wish_claims")
