@@ -19,9 +19,26 @@ export async function saveGoal(raw: unknown): Promise<ActionResult<{ id: string 
   const v = parsed.data;
   const usesMoney = v.progressSource !== "manual" || v.measure === "money";
 
-  // Baselines for account-driven goals come from the ledger at creation time.
+  // Baselines for account-driven goals come from the ledger when the goal
+  // starts following an account: at creation, or when an edit switches the
+  // source or the account. Otherwise the original baseline is kept.
   let startMinor: number | undefined;
-  if (!v.id && v.linkedAccountId && (v.progressSource === "account_balance" || v.progressSource === "debt_payoff")) {
+  let followsNewAccount = !v.id;
+  if (v.id) {
+    const { data: existing, error } = await ctx.supabase
+      .from("goals")
+      .select("progress_source, linked_account_id")
+      .eq("household_id", ctx.household.id)
+      .eq("id", v.id)
+      .maybeSingle();
+    if (error) {
+      logServerError("saveGoal.read", error);
+      return fail(dbErrorMessage(error));
+    }
+    if (!existing) return fail("That goal no longer exists.");
+    followsNewAccount = existing.progress_source !== v.progressSource || existing.linked_account_id !== (v.linkedAccountId || null);
+  }
+  if (followsNewAccount && v.linkedAccountId && (v.progressSource === "account_balance" || v.progressSource === "debt_payoff")) {
     const { data } = await ctx.supabase
       .from("account_balances")
       .select("balance_minor")

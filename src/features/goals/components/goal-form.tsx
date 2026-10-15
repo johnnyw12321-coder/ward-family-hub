@@ -104,20 +104,18 @@ function GoalForm({ accounts, members, currency, today, initial, onSaved }: Prop
         </div>
         <Field>
           <FieldLabel htmlFor="g-source">How is progress measured?</FieldLabel>
-          {editing ? (
-            <>
-              <p className="text-sm font-medium">{GOAL_SOURCE_LABELS[source]}</p>
-              <FieldDescription>The progress source can&apos;t change after creation.</FieldDescription>
-            </>
-          ) : (
-            <NativeSelect id="g-source" {...register("progressSource")}>
-              {GOAL_SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {GOAL_SOURCE_LABELS[s]}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
+          <NativeSelect id="g-source" {...register("progressSource")}>
+            {GOAL_SOURCES.map((s) => (
+              <option key={s} value={s}>
+                {GOAL_SOURCE_LABELS[s]}
+              </option>
+            ))}
+          </NativeSelect>
+          {editing && initial?.progressSource && source !== initial.progressSource ? (
+            <FieldDescription>
+              Nothing you&apos;ve recorded is lost: contributions, milestones and manual progress come back if you switch back.
+            </FieldDescription>
+          ) : null}
         </Field>
 
         {source === "manual" ? (
@@ -133,19 +131,19 @@ function GoalForm({ accounts, members, currency, today, initial, onSaved }: Prop
         {source === "account_balance" || source === "debt_payoff" ? (
           <Field data-invalid={Boolean(err.linkedAccountId)}>
             <FieldLabel htmlFor="g-account">{source === "debt_payoff" ? "Debt to pay off" : "Savings account"}</FieldLabel>
-            {editing ? (
-              <p className="text-sm font-medium">{accounts.find((a) => a.id === initial?.linkedAccountId)?.name ?? "—"}</p>
-            ) : (
-              <NativeSelect id="g-account" {...register("linkedAccountId")}>
-                <option value="">Choose…</option>
-                {accountOptions.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            )}
-            {source === "debt_payoff" ? <FieldDescription>Progress is the amount paid down since the goal started.</FieldDescription> : null}
+            <NativeSelect id="g-account" {...register("linkedAccountId")}>
+              <option value="">Choose…</option>
+              {accountOptions.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </NativeSelect>
+            <FieldDescription>
+              {source === "debt_payoff"
+                ? "Progress is the amount paid down from today's balance."
+                : "Progress is this account's whole balance, so it works best for an account kept just for this goal."}
+            </FieldDescription>
             <FieldError>{err.linkedAccountId?.message}</FieldError>
           </Field>
         ) : null}
