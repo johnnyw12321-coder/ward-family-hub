@@ -5,13 +5,14 @@ import { ArrowRightIcon, WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Money } from "@/components/shared/money";
 import { PageHeader, SectionHeading } from "@/components/shared/page-header";
-import { PageSkeleton } from "@/components/shared/skeletons";
+import { CardSkeleton, PageSkeleton } from "@/components/shared/skeletons";
 import { FitText } from "@/components/shared/fit-text";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import { CategoryBars } from "@/features/finance/components/category-bars";
 import { IncomeExpenseChart } from "@/features/finance/components/charts";
 import { AccountGroups } from "@/features/finance/components/account-groups";
+import { ThisMonth } from "@/features/finance/components/this-month";
 import { assetsNetWorthValue, getAssets } from "@/features/assets/queries";
 import { getAccounts, getCategoryTotals, getMonthly, getSummary } from "@/features/finance/queries";
 import { requireHousehold } from "@/lib/auth/context";
@@ -59,6 +60,10 @@ async function Overview() {
         />
         <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint={assetValue ? "Accounts, home & vehicles" : "Across all accounts"} href="/reports" />
       </div>
+
+      <Suspense fallback={<CardSkeleton lines={6} />}>
+        <ThisMonth ctx={ctx} />
+      </Suspense>
 
       {summary.savings_transfer_minor || summary.debt_principal_minor || summary.interest_minor ? (
         <section className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">

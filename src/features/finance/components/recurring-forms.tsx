@@ -440,3 +440,19 @@ export function SettleButtons(props: Omit<Parameters<typeof SettleForm>[0], "onD
     </div>
   );
 }
+
+/** Compact "Pay" / "Received" button for lists; opens the same form as the bill page. */
+export function SettleQuickButton(props: Omit<Parameters<typeof SettleForm>[0], "onDone"> & { label: string }) {
+  const [open, setOpen] = useState(false);
+  const { label, ...form } = props;
+  return (
+    <>
+      <Button size="sm" variant="outline" className="shrink-0" onClick={() => setOpen(true)} aria-label={label}>
+        <CheckIcon data-icon="inline-start" /> {props.direction === "bill" ? "Pay" : "Received"}
+      </Button>
+      <ResponsiveModal open={open} onOpenChange={setOpen} title={label}>
+        {open ? <SettleForm {...form} onDone={() => setOpen(false)} /> : null}
+      </ResponsiveModal>
+    </>
+  );
+}

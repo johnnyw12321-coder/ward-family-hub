@@ -332,6 +332,18 @@ export async function getRecurringPayments(ctx: HouseholdContext, recurringId: s
   return data.map((r) => ({ ...(r as RecurringPayment), amount_minor: r.amount_minor === null ? null : toMinor(r.amount_minor) }));
 }
 
+/** Settled (paid or skipped) occurrences due within [from, to], for the "this month" view. */
+export async function getPaymentsDueBetween(ctx: HouseholdContext, from: CalendarDate, to: CalendarDate): Promise<RecurringPayment[]> {
+  const { data, error } = await ctx.supabase
+    .from("recurring_payments")
+    .select("id, recurring_id, due_date, status, paid_on, amount_minor, transaction_id, notes, created_by, created_at")
+    .eq("household_id", ctx.household.id)
+    .gte("due_date", from)
+    .lte("due_date", to);
+  if (error) throw new QueryError("payments", error);
+  return data.map((r) => ({ ...(r as RecurringPayment), amount_minor: r.amount_minor === null ? null : toMinor(r.amount_minor) }));
+}
+
 /** Category plus its subcategories, for filtering by a parent category. */
 export function categoryWithChildren(categories: Category[], id: string): string[] {
   return [id, ...categories.filter((c) => c.parent_id === id).map((c) => c.id)];
