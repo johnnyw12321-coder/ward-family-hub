@@ -41,5 +41,7 @@ export const BACKUP_TABLES = [
   "family_health",
   "family_contacts",
   "family_dates",
+  "wish_items",
+  "wish_claims",
   "audit_logs",
 ] as const;

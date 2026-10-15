@@ -4,6 +4,7 @@ import {
   CalendarDaysIcon,
   CarIcon,
   FileLockIcon,
+  GiftIcon,
   HouseIcon,
   LayoutGridIcon,
   ListChecksIcon,
@@ -40,6 +41,7 @@ export const MORE_NAV: NavItem[] = [
   { href: "/vehicles", label: "Vehicles", icon: CarIcon, description: "Servicing, insurance, registration and costs" },
   { href: "/family", label: "Family", icon: UsersIcon, description: "Profiles, school, contacts and milestones" },
   { href: "/finances/planner", label: "Planner", icon: CalculatorIcon, description: "Play with income and spending what-ifs" },
+  { href: "/gifts", label: "Gift ideas", icon: GiftIcon, description: "Wishlists for birthdays and Christmas, with secret picks" },
   { href: "/reports", label: "Reports", icon: BarChart3Icon, description: "Spending, income and net worth over time" },
   { href: "/settings", label: "Settings", icon: SettingsIcon, description: "Profile, household, security and data" },
 ];
