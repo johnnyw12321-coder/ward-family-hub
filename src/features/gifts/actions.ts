@@ -1,11 +1,13 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { dbErrorMessage, fail, logServerError, ok, zodFieldErrors, type ActionResult } from "@/lib/actions";
 import { getActionContext } from "@/lib/auth/context";
 import { parseMoney } from "@/lib/money";
 import { fetchLinkPreview } from "./link-fetch";
+import { MAX_PHOTO_BYTES, removePhoto, sniffPhoto, WISHLIST_BUCKET } from "./photos";
 import { claimSchema, claimUpdateSchema, listKey, wishSchema } from "./schemas";
 
 const uuid = z.uuid();
@@ -81,6 +83,74 @@ export async function saveWish(raw: unknown): Promise<ActionResult<{ id: string 
 
   refresh();
   return ok({ id }, v.id ? "Saved" : link && !preview ? "Added (that shop doesn't share a preview)" : "Added");
+}
+
+// ---------------------------------------------------------------------------
+// Photos: signed upload URL -> the browser uploads the (already shrunk) photo
+// straight to Storage -> finishWishPhoto re-reads the bytes on the server and
+// keeps it only if it really is a JPEG, PNG or WebP, like the document vault.
+// ---------------------------------------------------------------------------
+export async function startWishPhoto(itemId: string): Promise<ActionResult<{ fileId: string; path: string; token: string }>> {
+  if (!uuid.safeParse(itemId).success) return fail("Invalid item.");
+  const auth = await getActionContext();
+  if (!auth.ok) return fail(auth.error);
+  const { ctx } = auth;
+  const fileId = randomUUID();
+  const { data, error } = await ctx.supabase.storage.from(WISHLIST_BUCKET).createSignedUploadUrl(`${ctx.household.id}/${itemId}/${fileId}`);
+  if (error || !data) {
+    console.error("[wishlist:signedUpload]", { message: error?.message });
+    return fail("The photo upload couldn't be started. Please try again.");
+  }
+  return ok({ fileId, path: data.path, token: data.token });
+}
+
+export async function finishWishPhoto(itemId: string, fileId: string): Promise<ActionResult> {
+  if (!uuid.safeParse(itemId).success || !uuid.safeParse(fileId).success) return fail("Invalid photo.");
+  const auth = await getActionContext();
+  if (!auth.ok) return fail(auth.error);
+  const { ctx } = auth;
+  const path = `${ctx.household.id}/${itemId}/${fileId}`;
+  const storage = ctx.supabase.storage.from(WISHLIST_BUCKET);
+  const { data: blob, error } = await storage.download(path);
+  if (error || !blob) return fail("The photo didn't arrive. Please try again.");
+  const type = sniffPhoto(new Uint8Array(await blob.slice(0, 32).arrayBuffer()));
+  if (blob.size === 0 || blob.size > MAX_PHOTO_BYTES || !type) {
+    await storage.remove([path]);
+    return fail("That doesn't look like a photo, so it wasn't kept.");
+  }
+  const { data: item } = await ctx.supabase.from("wish_items").select("image_path").eq("household_id", ctx.household.id).eq("id", itemId).maybeSingle();
+  const { data: updated, error: updateError } = await ctx.supabase
+    .from("wish_items")
+    .update({ image_path: path, image_source: "photo" })
+    .eq("household_id", ctx.household.id)
+    .eq("id", itemId)
+    .select("id");
+  if (updateError || !updated?.length) {
+    if (updateError) logServerError("finishWishPhoto", updateError);
+    await storage.remove([path]);
+    return fail("You can only add photos to ideas you're allowed to edit.");
+  }
+  if (item?.image_path && item.image_path !== path) await removePhoto(ctx, item.image_path);
+  refresh();
+  return ok(null, "Photo added");
+}
+
+export async function removeWishPhoto(itemId: string): Promise<ActionResult> {
+  if (!uuid.safeParse(itemId).success) return fail("Invalid item.");
+  const auth = await getActionContext();
+  if (!auth.ok) return fail(auth.error);
+  const { ctx } = auth;
+  const { data: item } = await ctx.supabase.from("wish_items").select("image_path").eq("household_id", ctx.household.id).eq("id", itemId).maybeSingle();
+  const { data, error } = await ctx.supabase
+    .from("wish_items")
+    .update({ image_path: null, image_source: null })
+    .eq("household_id", ctx.household.id)
+    .eq("id", itemId)
+    .select("id");
+  if (error || !data?.length) return fail(dbErrorMessage(error, "You can only change ideas you're allowed to edit."));
+  await removePhoto(ctx, item?.image_path);
+  refresh();
+  return ok(null, "Photo removed");
 }
 
 async function updateItem(

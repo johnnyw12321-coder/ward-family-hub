@@ -2,6 +2,7 @@ import "server-only";
 import { daysUntilBirthday, getFamilyMembers } from "@/features/family/queries";
 import type { HouseholdContext } from "@/lib/auth/context";
 import { addDays, type CalendarDate } from "@/lib/dates";
+import { signedPhotoUrls } from "./photos";
 import type { Occasion } from "./schemas";
 
 export type WishItem = {
@@ -24,6 +25,8 @@ export type WishItem = {
   link_title: string | null;
   link_site: string | null;
   link_checked_at: string | null;
+  /** Short-lived link to the item's photo, when it has one the viewer may see. */
+  photo_url: string | null;
 };
 
 export type WishClaim = {
@@ -113,7 +116,15 @@ export async function getWishes(ctx: HouseholdContext, list?: WishList): Promise
   if (list?.familyMemberId) q = q.eq("family_member_id", list.familyMemberId);
   const { data, error } = await q;
   if (error) fail("gift ideas", error);
-  const items = (data as Record<string, unknown>[]).map((r) => ({ ...(r as WishItem), price_minor: money(r.price_minor) }));
+  const rows = data as Record<string, unknown>[];
+  // Only photos people took are shown; pictures once copied from links are not.
+  const photoPath = (r: Record<string, unknown>) => (r.image_source === "photo" ? (r.image_path as string | null) : null);
+  const paths = list ? rows.map(photoPath).filter((p): p is string => Boolean(p)) : [];
+  const urls = await signedPhotoUrls(ctx, paths);
+  const items = rows.map((r) => {
+    const path = photoPath(r);
+    return { ...(r as WishItem), price_minor: money(r.price_minor), photo_url: path ? (urls.get(path) ?? null) : null };
+  });
   if (!items.length) return { items, claims: [] };
   const { data: claims, error: claimError } = await ctx.supabase
     .from("wish_claims")

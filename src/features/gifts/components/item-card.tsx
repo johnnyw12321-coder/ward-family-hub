@@ -41,8 +41,14 @@ export function ItemCard({
   };
   return (
     <li className="space-y-3 rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+      <div className="flex items-start gap-3">
+        {item.photo_url ? (
+          <a href={item.photo_url} target="_blank" rel="noopener noreferrer" className="shrink-0" aria-label={`View the photo of ${item.title}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed storage URL */}
+            <img src={item.photo_url} alt="" loading="lazy" className="size-16 rounded-xl bg-muted object-cover ring-1 ring-border/80" />
+          </a>
+        ) : null}
+        <div className="min-w-0 flex-1 space-y-1">
           <h3 className="font-semibold">{item.title}</h3>
           <div className="flex flex-wrap gap-1.5">
             {item.priority === "love" ? (
@@ -127,7 +133,7 @@ export function ItemCard({
           ) : (
             <span />
           )}
-          {editable && !item.removed_at ? <ItemControls id={item.id} initial={initial} mode={mode} received={Boolean(item.received_on)} /> : null}
+          {editable && !item.removed_at ? <ItemControls id={item.id} initial={initial} mode={mode} received={Boolean(item.received_on)} image={item.photo_url} /> : null}
         </div>
       ) : null}
     </li>

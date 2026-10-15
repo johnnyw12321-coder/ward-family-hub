@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckIcon, GiftIcon, PackageCheckIcon, PencilIcon, PlusIcon, Trash2Icon, Undo2Icon, XIcon } from "lucide-react";
+import { CameraIcon, CheckIcon, GiftIcon, ImageIcon, PackageCheckIcon, PencilIcon, PlusIcon, Trash2Icon, Undo2Icon, XIcon } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { cn } from "cn";
@@ -16,7 +16,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/actions";
 import { currencySymbol } from "@/lib/money";
-import { claimWish, releaseClaim, removeWish, saveWish, setWishReceived, updateClaim } from "../actions";
+import { createBrowserSupabase } from "@/lib/supabase/client";
+import { claimWish, finishWishPhoto, releaseClaim, removeWish, removeWishPhoto, saveWish, setWishReceived, startWishPhoto, updateClaim } from "../actions";
+import { compressImage } from "../compress-image";
 import { OCCASION_LABELS, OCCASIONS, claimSchema, wishSchema, type ClaimInput, type Occasion, type WishInput } from "../schemas";
 
 function useAction() {
@@ -33,16 +35,95 @@ function useAction() {
   return { pending, run };
 }
 
+/** Photo → shrink in the browser → signed upload → server check. */
+async function uploadPhoto(itemId: string, file: File): Promise<ActionResult> {
+  let blob: Blob;
+  try {
+    blob = await compressImage(file);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Couldn't prepare the photo." };
+  }
+  const start = await startWishPhoto(itemId);
+  if (!start.ok) return start;
+  const { error } = await createBrowserSupabase()
+    .storage.from("wishlist")
+    .uploadToSignedUrl(start.data.path, start.data.token, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+  if (error) return { ok: false, error: "The photo didn't upload. Check your connection and try again." };
+  return finishWishPhoto(itemId, start.data.fileId);
+}
+
+function PhotoPicker({
+  current,
+  chosen,
+  removed,
+  onFile,
+  onRemove,
+}: {
+  current: string | null;
+  /** Object URL of a newly chosen photo. */
+  chosen: string | null;
+  removed: boolean;
+  onFile: (f: File) => void;
+  onRemove: () => void;
+}) {
+  const camera = useRef<HTMLInputElement>(null);
+  const gallery = useRef<HTMLInputElement>(null);
+  const shown = chosen ?? (removed ? null : current);
+  const pick = (f: File | undefined) => {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      toast.error("Choose a photo.");
+      return;
+    }
+    onFile(f);
+  };
+  return (
+    <div className="space-y-2">
+      <input ref={camera} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} onChange={(e) => pick(e.target.files?.[0])} />
+      <input ref={gallery} type="file" accept="image/*" className="sr-only" tabIndex={-1} onChange={(e) => pick(e.target.files?.[0])} />
+      {shown ? (
+        <div className="relative overflow-hidden rounded-xl bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element -- local preview / signed storage URL */}
+          <img src={shown} alt="" className="aspect-[4/3] w-full object-cover" />
+          <Button type="button" size="icon" variant="secondary" className="absolute top-2 right-2 rounded-full" aria-label="Remove photo" onClick={onRemove}>
+            <XIcon aria-hidden />
+          </Button>
+        </div>
+      ) : null}
+      <div className="grid grid-cols-2 gap-2">
+        <Button type="button" variant="outline" onClick={() => camera.current?.click()}>
+          <CameraIcon aria-hidden /> Take photo
+        </Button>
+        <Button type="button" variant="outline" onClick={() => gallery.current?.click()}>
+          <ImageIcon aria-hidden /> Choose photo
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function WishForm({
   initial,
   mode,
+  currentImage,
   onDone,
 }: {
   initial: WishInput;
   mode: "own" | "surprise" | "shared";
+  currentImage: string | null;
   onDone: () => void;
 }) {
   const [pending, start] = useTransition();
+  const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
+  // Free the local preview when the form closes.
+  const latest = useRef(photo);
+  useEffect(() => {
+    latest.current = photo;
+  }, [photo]);
+  useEffect(() => () => {
+    if (latest.current) URL.revokeObjectURL(latest.current.url);
+  }, []);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const form = useForm<WishInput>({ resolver: zodResolver(wishSchema), defaultValues: initial });
   const err = form.formState.errors;
   const priority = useWatch({ control: form.control, name: "priority" });
@@ -54,6 +135,13 @@ function WishForm({
         toast.error(saved.error);
         return;
       }
+      if (photo) {
+        const r = await uploadPhoto(saved.data.id, photo.file);
+        if (!r.ok) toast.error(`Saved, but ${r.error.charAt(0).toLowerCase()}${r.error.slice(1)}`);
+      } else if (photoRemoved && currentImage) {
+        const r = await removeWishPhoto(saved.data.id);
+        if (!r.ok) toast.error(r.error);
+      }
       if (saved.message) toast.success(saved.message);
       onDone();
     });
@@ -64,6 +152,21 @@ function WishForm({
           A surprise idea: it goes on their list, but they won&apos;t see it.
         </p>
       ) : null}
+      <PhotoPicker
+        current={currentImage}
+        chosen={photo?.url ?? null}
+        removed={photoRemoved}
+        onFile={(f) => {
+          if (photo) URL.revokeObjectURL(photo.url);
+          setPhoto({ file: f, url: URL.createObjectURL(f) });
+          setPhotoRemoved(false);
+        }}
+        onRemove={() => {
+          if (photo) URL.revokeObjectURL(photo.url);
+          setPhoto(null);
+          setPhotoRemoved(true);
+        }}
+      />
       <FieldGroup className="gap-4">
         <Field data-invalid={Boolean(err.link)}>
           <FieldLabel htmlFor="w-link">Link</FieldLabel>
@@ -117,7 +220,7 @@ function WishForm({
         </div>
       </FieldGroup>
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? <Spinner /> : null} {pending ? "Saving…" : initial.id ? "Save" : "Add to the list"}
+        {pending ? <Spinner /> : null} {pending ? (photo ? "Saving and uploading…" : "Saving…") : initial.id ? "Save" : "Add to the list"}
       </Button>
     </form>
   );
@@ -128,6 +231,7 @@ export function WishFormButton({
   mode,
   label,
   title,
+  currentImage = null,
   variant = "default",
   size = "default",
 }: {
@@ -135,6 +239,7 @@ export function WishFormButton({
   mode: "own" | "surprise" | "shared";
   label: ReactNode;
   title: string;
+  currentImage?: string | null;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "icon";
 }) {
@@ -145,7 +250,7 @@ export function WishFormButton({
         {label}
       </Button>
       <ResponsiveModal open={open} onOpenChange={setOpen} title={title}>
-        {open ? <WishForm initial={initial} mode={mode} onDone={() => setOpen(false)} /> : null}
+        {open ? <WishForm initial={initial} mode={mode} currentImage={currentImage} onDone={() => setOpen(false)} /> : null}
       </ResponsiveModal>
     </>
   );
@@ -172,11 +277,13 @@ export function ItemControls({
   initial,
   mode,
   received,
+  image,
 }: {
   id: string;
   initial: WishInput;
   mode: "own" | "surprise" | "shared";
   received: boolean;
+  image: string | null;
 }) {
   const { pending, run } = useAction();
   return (
@@ -190,6 +297,7 @@ export function ItemControls({
         <WishFormButton
           initial={initial}
           mode={mode}
+          currentImage={image}
           title="Edit"
           variant="ghost"
           size="sm"
