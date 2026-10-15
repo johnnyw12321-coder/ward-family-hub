@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PauseIcon, PlayIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import { cn } from "cn";
+import { FitText } from "@/components/shared/fit-text";
 import { ConfirmAction } from "@/components/shared/confirm-action";
 import { Money } from "@/components/shared/money";
 import { PageHeader, SectionHeading } from "@/components/shared/page-header";
@@ -80,9 +81,9 @@ async function BillDetail({ params }: { params: PageProps<"/finances/bills/[id]"
         <div className="text-sm text-muted-foreground">
           {item.is_variable_amount ? "Usually about" : income ? "Expected" : "Amount"}
         </div>
-        <div className="text-3xl font-semibold tracking-tight">
+        <FitText className="text-3xl font-semibold tracking-tight">
           <Money minor={item.amount_minor} tone={income ? "income" : "plain"} />
-        </div>
+        </FitText>
         {item.is_active ? (
           <div
             className={cn(

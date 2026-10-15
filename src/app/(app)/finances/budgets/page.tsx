@@ -99,7 +99,7 @@ async function BudgetView({ searchParams }: { searchParams: PageProps<"/finances
 
       {lines.length ? (
         <>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
             <StatCard label="Budgeted" value={<Money minor={totals.available} trimZeroCents />} />
             <StatCard label="Spent" value={<Money minor={totals.spent} trimZeroCents />} />
             <StatCard

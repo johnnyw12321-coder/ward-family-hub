@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Trash2Icon } from "lucide-react";
+import { FitText } from "@/components/shared/fit-text";
 import { ConfirmAction } from "@/components/shared/confirm-action";
 import { Money } from "@/components/shared/money";
 import { PageHeader } from "@/components/shared/page-header";
@@ -63,9 +64,9 @@ async function TransactionDetail({ params }: { params: PageProps<"/finances/tran
       <PageHeader title={tx.description} back={{ href: "/finances/transactions", label: "Transactions" }} />
 
       <section className="rounded-2xl bg-card p-5 shadow-card ring-1 ring-border/80">
-        <div className="text-3xl font-semibold tracking-tight">
+        <FitText className="text-3xl font-semibold tracking-tight">
           <Money minor={tx.kind === "transfer" ? tx.amount_minor : tx.signed_amount_minor} tone={tx.kind === "transfer" ? "plain" : "signed"} currency={tx.currency} />
-        </div>
+        </FitText>
         <dl className="mt-4 divide-y text-sm">
           {details
             .filter(([, v]) => v)

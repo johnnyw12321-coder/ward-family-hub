@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Money } from "@/components/shared/money";
 import { PageHeader, SectionHeading } from "@/components/shared/page-header";
 import { PageSkeleton } from "@/components/shared/skeletons";
+import { FitText } from "@/components/shared/fit-text";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import { CategoryBars } from "@/features/finance/components/category-bars";
@@ -66,19 +67,19 @@ async function Overview() {
             <div>
               <dt className="text-xs text-muted-foreground">Moved to savings</dt>
               <dd className="font-semibold">
-                <Money minor={summary.savings_transfer_minor} />
+                <FitText><Money minor={summary.savings_transfer_minor} /></FitText>
               </dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Debt principal paid</dt>
               <dd className="font-semibold">
-                <Money minor={summary.debt_principal_minor} />
+                <FitText><Money minor={summary.debt_principal_minor} /></FitText>
               </dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Interest (in spending)</dt>
               <dd className="font-semibold">
-                <Money minor={summary.interest_minor} />
+                <FitText><Money minor={summary.interest_minor} /></FitText>
               </dd>
             </div>
           </dl>

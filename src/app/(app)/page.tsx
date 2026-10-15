@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Money } from "@/components/shared/money";
 import { SectionHeading } from "@/components/shared/page-header";
 import { PageSkeleton } from "@/components/shared/skeletons";
+import { FitText } from "@/components/shared/fit-text";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import { BillRow } from "@/features/finance/components/bill-row";
@@ -130,22 +131,22 @@ async function Dashboard() {
 
       <section aria-label={`${monthLabel(month)} at a glance`} className="rounded-3xl bg-primary p-5 text-primary-foreground shadow-float">
         <div className="text-sm text-primary-foreground/80">{monthLabel(month)} so far</div>
-        <div className="mt-1 text-3xl font-semibold tracking-tight tabular">
+        <FitText className="mt-1 text-3xl font-semibold tracking-tight tabular">
           <Money minor={net} tone="plain" />
-        </div>
+        </FitText>
         <div className="text-sm text-primary-foreground/80">{net >= 0 ? "surplus" : "deficit"} this month</div>
         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-primary-foreground/15 pt-4 text-sm">
           <div>
             <div className="text-primary-foreground/75">Income</div>
-            <div className="font-semibold tabular">
+            <FitText className="font-semibold tabular">
               <Money minor={summary.income_minor} />
-            </div>
+            </FitText>
           </div>
           <div>
             <div className="text-primary-foreground/75">Spending</div>
-            <div className="font-semibold tabular">
+            <FitText className="font-semibold tabular">
               <Money minor={summary.expense_minor} />
-            </div>
+            </FitText>
             {spendChange !== null ? (
               <div className="text-xs text-primary-foreground/75">
                 {spendChange > 0 ? "▲" : spendChange < 0 ? "▼" : ""} {Math.abs(spendChange)}% vs same point last month

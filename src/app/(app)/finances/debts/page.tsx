@@ -56,7 +56,7 @@ async function DebtsView() {
       <PageHeader title="Debts" description="Credit cards, loans and the mortgage, ordered by interest rate." />
       {debts.length ? (
         <>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
             <StatCard label="Total owed" value={<Money minor={totalOwed} trimZeroCents />} />
             <StatCard label="Principal paid this year" value={<Money minor={ytd.debt_principal_minor} trimZeroCents />} />
             <StatCard label="Interest this year" value={<Money minor={ytd.interest_minor} trimZeroCents />} />

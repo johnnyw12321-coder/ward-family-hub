@@ -48,7 +48,7 @@ async function AccountsView({ searchParams }: { searchParams: PageProps<"/financ
       />
       {active.length ? (
         <>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
             <StatCard label="Assets" value={<Money minor={totals.totalAssets} trimZeroCents />} />
             <StatCard label="Owed" value={<Money minor={totals.totalLiabilities} trimZeroCents />} />
             <StatCard label="Net" value={<Money minor={totals.netWorth} trimZeroCents />} tone="primary" />

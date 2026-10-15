@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArchiveIcon, ArchiveRestoreIcon, ReceiptIcon, Trash2Icon } from "lucide-react";
+import { FitText } from "@/components/shared/fit-text";
 import { ConfirmAction } from "@/components/shared/confirm-action";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Money } from "@/components/shared/money";
@@ -70,9 +71,9 @@ async function AccountDetail({ params }: { params: PageProps<"/finances/accounts
 
       <section className="rounded-2xl bg-card p-5 shadow-card ring-1 ring-border/80">
         <div className="text-sm text-muted-foreground">{liability ? (shown >= 0 ? "Currently owed" : "In credit") : "Balance"}</div>
-        <div className="text-3xl font-semibold tracking-tight">
+        <FitText className="text-3xl font-semibold tracking-tight">
           <Money minor={liability ? Math.abs(shown) : shown} currency={account.currency} />
-        </div>
+        </FitText>
         {utilisation !== null ? (
           <div className="mt-3">
             <div className="mb-1 flex justify-between text-xs text-muted-foreground">
