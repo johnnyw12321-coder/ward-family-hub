@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getMfaState } from "@/features/documents/queries";
 import { PushCard } from "@/features/notifications/components/push-card";
+import { RemindersCard } from "@/features/notifications/components/reminders-card";
 import { TwoFactorCard } from "@/features/security/components";
 import { pushPublicKey } from "@/lib/push";
 import { HouseholdForm, ProfileForm } from "@/features/settings/settings-forms";
@@ -72,6 +73,13 @@ async function SettingsView() {
     .neq("table_name", "transaction_entries")
     .order("created_at", { ascending: false })
     .limit(25);
+  const { data: prefs } = await ctx.supabase
+    .from("notification_preferences")
+    .select("kind, push")
+    .eq("household_id", ctx.household.id)
+    .eq("user_id", ctx.userId)
+    .in("kind", ["daily_log", "weekly_checkin"]);
+  const reminders = Object.fromEntries((prefs ?? []).map((p) => [p.kind as string, Boolean(p.push)]));
   const timezones = COMMON_TIMEZONES.includes(ctx.household.timezone) ? COMMON_TIMEZONES : [ctx.household.timezone, ...COMMON_TIMEZONES];
 
   return (
@@ -86,7 +94,10 @@ async function SettingsView() {
 
       <section id="notifications" className="scroll-mt-20">
         <SectionHeading title="Notifications" />
-        <PushCard publicKey={pushPublicKey()} />
+        <div className="space-y-3">
+          <PushCard publicKey={pushPublicKey()} />
+          <RemindersCard initial={reminders} />
+        </div>
       </section>
 
       <section>

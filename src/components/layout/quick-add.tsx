@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeftRightIcon, CalendarPlusIcon, ListPlusIcon, PlusIcon, ReceiptIcon, TrendingUpIcon, type LucideIcon } from "lucide-react";
 import { ResponsiveModal } from "@/components/shared/responsive-modal";
@@ -29,6 +29,24 @@ export function QuickAdd({ data }: { data: QuickAddData }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("menu");
   const [stamp, setStamp] = useState({ today: "", time: "" });
+
+  // Opened with ?add=expense (home-screen shortcut, evening reminder): go straight to that form.
+  useEffect(() => {
+    if (!data.canWrite) return;
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("add");
+    if (requested !== "expense" && requested !== "income" && requested !== "transfer") return;
+    const timer = setTimeout(() => {
+      // Drop the parameter only once the form opens, so a reload doesn't reopen it.
+      params.delete("add");
+      const rest = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+      setStamp({ today: todayIn(data.timezone), time: instantToLocalTime(new Date(), data.timezone) });
+      setMode(requested);
+      setOpen(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [data.canWrite, data.timezone]);
 
   if (!data.canWrite) return null;
 

@@ -79,6 +79,41 @@ describe("the daily push job", () => {
     expect((await db.query(`select 1 from public.push_subscriptions where endpoint = $1`, [sub(1).endpoint])).rows).toHaveLength(0);
   });
 
+  it("nudges only people who opted in and haven't logged anything today, once a day", async () => {
+    await save(f.jonathan, f.householdA, 3);
+    await save(f.adanna, f.householdA, 4);
+    for (const user of [f.jonathan, f.adanna]) {
+      await asUser(db, user, (tx) =>
+        tx.query(`insert into public.notification_preferences (household_id, user_id, kind, push) values ($1, $2, 'daily_log', true)`, [f.householdA, user]),
+      );
+    }
+    // Adanna already logged a coffee today; Jonathan didn't.
+    const account = await asUser(db, f.adanna, async (tx) => {
+      const a = await tx.query<{ id: string }>(`insert into public.financial_accounts (household_id, name, type) values ($1, 'Wallet', 'cash') returning id`, [
+        f.householdA,
+      ]);
+      return a.rows[0].id;
+    });
+    const food = await categoryId(db, f.householdA, "Groceries");
+    await asUser(db, f.adanna, (tx) => tx.query(`select public.save_transaction($1, 'expense', 2500, $2, now(), 'Coffee', p_category_id => $3)`, [f.householdA, account, food]));
+
+    const first = await asAnon(db, (tx) => tx.query<{ user_id: string }>(`select * from public.push_nudges($1, 'daily_log')`, [TOKEN]));
+    expect(first.rows.map((r) => r.user_id)).toEqual([f.jonathan]);
+    const second = await asAnon(db, (tx) => tx.query(`select * from public.push_nudges($1, 'daily_log')`, [TOKEN]));
+    expect(second.rows).toHaveLength(0);
+    await expect(asAnon(db, (tx) => tx.query(`select * from public.push_nudges($1, 'daily_log')`, ["bad-" + TOKEN]))).rejects.toThrow(/Not allowed/);
+    await expect(asAnon(db, (tx) => tx.query(`select * from public.push_nudges($1, 'anything')`, [TOKEN]))).rejects.toThrow(/Unknown reminder/);
+  });
+
+  it("sends the money check-in only on Sundays in the household's time zone", async () => {
+    await asUser(db, f.jonathan, (tx) =>
+      tx.query(`insert into public.notification_preferences (household_id, user_id, kind, push) values ($1, $2, 'weekly_checkin', true)`, [f.householdA, f.jonathan]),
+    );
+    const isSunday = (await db.query<{ sunday: boolean }>(`select extract(dow from now() at time zone 'America/Port_of_Spain') = 0 as sunday`)).rows[0].sunday;
+    const r = await asAnon(db, (tx) => tx.query<{ user_id: string }>(`select * from public.push_nudges($1, 'weekly_checkin')`, [TOKEN]));
+    expect(r.rows.length > 0).toBe(isSunday);
+  });
+
   it("doesn't let the job's token reach anything else", async () => {
     await expect(asAnon(db, (tx) => tx.query(`select * from private.push_config`))).rejects.toThrow(/permission denied/);
     await expect(asAnon(db, (tx) => tx.query(`select private.set_push_token_hash('00')`))).rejects.toThrow(/permission denied/);

@@ -69,3 +69,21 @@ export async function sendTestPush(): Promise<ActionResult<{ sent: number }>> {
   if (!sent) return fail("The test couldn't reach your phone. Turn notifications off and on again.");
   return ok({ sent }, sent === 1 ? "Test sent — check your phone" : `Test sent to ${sent} phones`);
 }
+
+const REMINDER_KINDS = ["daily_log", "weekly_checkin"] as const;
+
+/** Turn the evening "anything to log?" nudge or the Sunday check-in on or off for yourself. */
+export async function setReminder(kind: string, on: boolean): Promise<ActionResult> {
+  if (!(REMINDER_KINDS as readonly string[]).includes(kind) || typeof on !== "boolean") return fail("Unknown reminder.");
+  const auth = await getActionContext({ write: false });
+  if (!auth.ok) return fail(auth.error);
+  const { ctx } = auth;
+  const { error } = await ctx.supabase
+    .from("notification_preferences")
+    .upsert({ household_id: ctx.household.id, user_id: ctx.userId, kind, push: on }, { onConflict: "household_id,user_id,kind" });
+  if (error) {
+    logServerError("setReminder", error);
+    return fail(dbErrorMessage(error, "Couldn't save that."));
+  }
+  return ok(null, on ? "Reminder on" : "Reminder off");
+}

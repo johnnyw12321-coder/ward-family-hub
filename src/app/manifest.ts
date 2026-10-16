@@ -19,7 +19,10 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
       { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
+    // Long-press the home-screen icon (Android) for these.
     shortcuts: [
+      { name: "Add expense", short_name: "Expense", url: "/?add=expense", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+      { name: "Add income", short_name: "Income", url: "/?add=income", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Transactions", url: "/finances/transactions", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Bills", url: "/finances/bills", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
     ],

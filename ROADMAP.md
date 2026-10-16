@@ -73,7 +73,7 @@ verification against a live Supabase project · ⬜ not started
 - ✅ AI assistant design: [docs/AI_ASSISTANT.md](docs/AI_ASSISTANT.md) (no AI service connected)
 - ⬜ Scripted restore tool
 - ⬜ Google Calendar sync (schema columns reserved)
-- 🟡 Push notifications: per-phone opt-in in Settings (Android Chrome; iPhone from the Home Screen, iOS 16.4+), a daily ~07:00 job that sends unsent reminders as one notification per phone, test button. Email delivery: ⬜ not yet
+- 🟡 Push notifications: per-phone opt-in in Settings (Android Chrome; iPhone from the Home Screen, iOS 16.4+), a daily ~07:00 job that sends unsent reminders as one notification per phone, test button; opt-in evening "anything to log?" nudge (~20:00, skipped if you logged something that day) and Sunday money check-in; "Add expense" home-screen shortcut. Email delivery: ⬜ not yet
 - ⬜ Offline transaction entry
 - ⬜ Performance work for 10–20 years of data (indexes are in place; pagination on transactions)
 
