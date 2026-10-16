@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabasePublishableKey, supabaseUrl } from "@/lib/env";
 
 /** Paths reachable without a session. Everything else requires sign-in. */
-const PUBLIC_PATHS = ["/login", "/forgot-password", "/auth/confirm", "/offline", "/setup"];
+// /api/cron routes check their own secret (Vercel Cron sends it); they never use a session.
+const PUBLIC_PATHS = ["/login", "/forgot-password", "/auth/confirm", "/offline", "/setup", "/api/cron"];
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

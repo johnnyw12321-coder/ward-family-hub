@@ -8,9 +8,10 @@
  *     traffic always go to the network and are never stored.
  *   - When a navigation fails, the generic offline page is shown.
  *
- * Push notifications are NOT implemented yet; there is no push handler here.
+ * Push: shows the reminders the daily job sends, and opens the right page
+ * when one is tapped. Push payloads are shown, never cached.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC_CACHE = `ward-static-${VERSION}`;
 const OFFLINE_URL = "/offline";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png"];
@@ -65,4 +66,41 @@ self.addEventListener("fetch", (event) => {
     );
   }
   // Everything else: default network behaviour, no caching.
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Ward Hub", body: event.data ? event.data.text() : "" };
+  }
+  const url = typeof data.url === "string" && data.url.startsWith("/") ? data.url : "/notifications";
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Ward Hub", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: data.tag || "ward-reminders",
+      renotify: true,
+      data: { url },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "/notifications", self.location.origin);
+  if (url.origin !== self.location.origin) return;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const w of windows) {
+        if (new URL(w.url).origin === self.location.origin && "focus" in w) {
+          w.navigate(url.href);
+          return w.focus();
+        }
+      }
+      return self.clients.openWindow(url.href);
+    }),
+  );
 });

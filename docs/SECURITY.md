@@ -113,6 +113,17 @@ for every operation, and its audit trail records only which fields changed.
   git-ignored (except `.env.example`, which holds no values).
 - Never store banking passwords, PINs or recovery codes in notes, documents or
   any field — the UI reminds users of this on note fields.
+- Push notifications use four server-only Vercel variables: `VAPID_PUBLIC_KEY`
+  / `VAPID_PRIVATE_KEY` (signs pushes), `CRON_SECRET` (Vercel Cron sends it to
+  `/api/cron/push`) and `PUSH_DISPATCH_TOKEN`. The daily job uses the
+  publishable key plus that token, never the service role. The token is stored
+  in the database only as a SHA-256 hash (`private.push_config`) and opens just
+  two functions in the `push_dispatch` schema: list today's unsent reminders
+  with their subscriptions, and record what was sent. Rotate it by generating a
+  new token, updating Vercel, and running
+  `select private.set_push_token_hash('<sha-256 hex>')` in the SQL editor.
+- Push subscriptions are visible only to the member who created them. A phone
+  belongs to whoever is signed in on it: re-subscribing moves it.
 
 ## What is tested
 

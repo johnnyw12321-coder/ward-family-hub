@@ -8,7 +8,9 @@ import { CardSkeleton } from "@/components/shared/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getMfaState } from "@/features/documents/queries";
+import { PushCard } from "@/features/notifications/components/push-card";
 import { TwoFactorCard } from "@/features/security/components";
+import { pushPublicKey } from "@/lib/push";
 import { HouseholdForm, ProfileForm } from "@/features/settings/settings-forms";
 import { requireHousehold, memberName } from "@/lib/auth/context";
 import { formatInstant } from "@/lib/dates";
@@ -80,6 +82,11 @@ async function SettingsView() {
           <ProfileForm initial={{ displayName: ctx.me.display_name, color: isMemberColor(ctx.me.color) ? ctx.me.color : "sage" }} />
           {ctx.email ? <p className="mt-4 text-xs text-muted-foreground">Signed in as {ctx.email}</p> : null}
         </div>
+      </section>
+
+      <section id="notifications" className="scroll-mt-20">
+        <SectionHeading title="Notifications" />
+        <PushCard publicKey={pushPublicKey()} />
       </section>
 
       <section>
