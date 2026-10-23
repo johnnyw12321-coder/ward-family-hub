@@ -4,6 +4,7 @@ import { ChevronRightIcon } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { MORE_NAV } from "@/components/layout/nav-items";
+import { SwitchToHealthCard } from "@/features/health/components/mode-switch";
 import { MODULE_STATUS } from "@/features/module-status";
 
 export const metadata: Metadata = { title: "More" };
@@ -12,6 +13,9 @@ export default function MorePage() {
   return (
     <div>
       <PageHeader title="More" description="Everything else for running the household." />
+      <div className="mb-4">
+        <SwitchToHealthCard />
+      </div>
       <ul className="divide-y overflow-hidden rounded-2xl bg-card shadow-card ring-1 ring-border/80">
         {MORE_NAV.map((item) => {
           const status = MODULE_STATUS[item.href];

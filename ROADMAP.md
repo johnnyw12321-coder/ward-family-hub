@@ -77,6 +77,14 @@ verification against a live Supabase project · ⬜ not started
 - ⬜ Offline transaction entry
 - ⬜ Performance work for 10–20 years of data (indexes are in place; pagination on transactions)
 
+## Ward Health — personal fitness module ✅🟡
+
+- ✅ Per-person tables with owner-only RLS, atomic import and reset, demo data (tested)
+- ✅ BMR/TDEE/calorie targets with safety floors and pace warnings; macros; units; trend, streaks, PRs, overload, badges (tested)
+- 🟡 Mode switch (More → Switch to Ward Health; remembered per device), own navigation and dashboard
+- 🟡 Profile/onboarding, diet plans + fasting timer, food/water/weight/measurement tracking, progress photos (on device), workouts (72 programs, logger, rest timer, custom builder, strength charts), export/import/reset, in-app reminders
+- ⬜ Reminders by push notification (in-app only for now)
+
 ## Required external setup (your action)
 
 1. Create the Supabase project, apply migrations, disable sign-ups, set URLs and
