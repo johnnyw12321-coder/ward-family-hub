@@ -80,7 +80,7 @@ async function WorkoutsView() {
             <div className="font-semibold">
               {prog.days[nextDay].name} <span className="font-normal text-muted-foreground">· {prog.days[nextDay].focus}</span>
             </div>
-            <ul className="mt-2 grid gap-x-4 gap-y-0.5 text-sm text-muted-foreground sm:grid-cols-2">
+            <ul className="mt-2 grid grid-cols-1 gap-x-4 gap-y-0.5 text-sm text-muted-foreground sm:grid-cols-2">
               {prog.days[nextDay].exercises.map((e) => (
                 <li key={e.key} className="flex justify-between gap-2">
                   <span className="truncate">{exercise(e.key)?.name}</span>
@@ -104,7 +104,7 @@ async function WorkoutsView() {
             <h2 className="font-semibold">Pick a program</h2>
             <p className="text-sm text-muted-foreground">A plan takes the guesswork out: what to do each day, how many sets and reps, and how long to rest.</p>
           </div>
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {suggested.map((p) => (
               <li key={p.key}>
                 <Link href={`/health/workouts/programs/${p.key}`} className="flex items-center gap-3 rounded-xl p-3 ring-1 ring-border/80 transition-colors hover:bg-muted/50">

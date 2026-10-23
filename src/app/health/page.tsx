@@ -161,7 +161,7 @@ async function DashboardView() {
         </Link>
       ) : null}
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {/* Calories and macros remaining */}
         <Link href="/health/track" className={cn(card, "flex items-center gap-4 transition-colors hover:bg-muted/40")}>
           <ProgressRing value={eaten.calories} max={plan.target} size={128} stroke={12} label={`${eaten.calories} of ${plan.target} calories eaten`}>

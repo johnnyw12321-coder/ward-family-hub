@@ -36,7 +36,7 @@ export function ChoiceCards<T extends string>({
       role="radiogroup"
       aria-label={label}
       aria-invalid={invalid || undefined}
-      className={cn("grid gap-2", columns === 2 && "sm:grid-cols-2", columns === 3 && "grid-cols-3")}
+      className={cn("grid grid-cols-1 gap-2", columns === 2 && "sm:grid-cols-2", columns === 3 && "sm:grid-cols-3")}
     >
       {choices.map((c, i) => {
         const checked = c.value === value;
