@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { shouldOpenWardHealth } from "@/features/health/mode";
 import { supabasePublishableKey, supabaseUrl } from "@/lib/env";
 
 /** Paths reachable without a session. Everything else requires sign-in. */
@@ -55,6 +56,11 @@ export async function updateSession(request: NextRequest) {
   }
   if (signedIn && pathname === "/login") {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+  if (signedIn && shouldOpenWardHealth(request)) {
+    const redirect = NextResponse.redirect(new URL("/health", request.url));
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+    return redirect;
   }
   return response;
 }

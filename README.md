@@ -120,6 +120,81 @@ Supabase the migrations depend on (roles, default grants, `auth.uid()`,
 `auth.jwt()`, a storage schema), apply every migration and then act as
 different users to prove the security rules. See [docs/SECURITY.md](docs/SECURITY.md#what-is-tested).
 
+## Ward Health
+
+A personal fitness hub inside Ward Hub. Open it from **More → Switch to Ward
+Health** (or the bottom of the sidebar on desktop). It has its own navigation —
+Dashboard, Diet, Track, Workouts, Profile — and a **Ward Hub** button to switch
+back. The app remembers which one you were last in on each device: opening the
+app at its start page (`/`) goes back to Ward Health if that's where you left
+off.
+
+**What's in it**
+
+- **Profile and targets:** height, weight, age, sex, activity level, metric or
+  imperial (converted everywhere), and a goal (lose fat, build muscle, gain
+  weight, maintain) with an optional target weight and date. BMR uses
+  Mifflin-St Jeor, TDEE applies the activity factor, and the calorie target
+  adjusts for the goal. It never suggests less than 1,200 kcal (women) /
+  1,500 kcal (men), caps deficits at 25% of TDEE, and warns when the pace is
+  aggressive (losing more than 1% of body weight a week). General guidance,
+  not medical advice.
+- **Diet plans:** balanced deficit, high protein, low carb/keto, Mediterranean,
+  intermittent fasting (16:8 / 18:6 with a fasting timer), vegetarian/plant-based,
+  lean bulk and mass gain, each with a macro split (in grams, from your
+  target), who it suits, pros and cons, a sample day and a food list.
+- **Tracking:** weigh-ins with a 7-day moving average and goal line; food
+  logging from a built-in database of 190+ foods (including local dishes),
+  your own foods, saved meals, recent foods and quick-add calories; calorie
+  and macro rings; water; body measurements with charts; progress photos
+  (kept on the device only); streaks, badges and milestone celebrations.
+- **Workouts:** 72 built-in programs (fat loss, muscle, mass gain, general
+  fitness × home or gym × beginner/intermediate/advanced × 3/4/5 days a week)
+  built from 120+ exercises with form tips; a workout logger with a rest
+  timer, notes, automatic personal-record detection and progressive-overload
+  suggestions; strength charts per exercise; a custom workout builder.
+- **Dashboard:** today's calories and macros remaining, today's workout,
+  water, weight trend, current streak, reminders, and a weekly summary with
+  insights (e.g. average protein this week).
+- **Data:** export everything as JSON (re-importable), weight and workouts as
+  CSV; import a backup (replaces your Ward Health data in one transaction);
+  **Load demo data** to preview the charts; reset Ward Health without
+  touching the rest of Ward Hub.
+
+**Privacy.** Ward Health data is personal: every row carries `household_id`
+and `user_id`, and RLS lets only that person read or write it — other
+household members (even owners) can't see it. The tables aren't audited
+(the audit log is household-visible) and aren't in the household backup; use
+Ward Health's own export. Read-only household members can still keep their own
+Ward Health data.
+
+**Setup.** Apply `supabase/migrations/20261023000100_ward_health.sql` like the
+other migrations. Nothing else is needed: the food, exercise, program and diet
+catalogues ship with the app.
+
+**Code.** Everything lives in `src/features/health/` (routes in `src/app/health/`
+and `src/app/api/health/`):
+
+```
+src/features/health/
+  calc/          pure, unit-tested maths: energy (BMR/TDEE/targets), macros,
+                 units, trend, streaks, strength (1RM, PRs, overload), badges, insights
+  catalog/       foods, exercises, programs (generated from movement patterns), diet plans
+  repository.ts  HealthRepository: every read/write Ward Health makes
+  supabase-repository.ts   the Supabase implementation (swap storage here)
+  context.ts     picks the repository; page/action context helpers
+  queries.ts     overview, targets, badge sync, workout history
+  actions/       Server Actions (profile, diet, tracking, workouts, data)
+  components/    UI
+  demo.ts        sample data, generated in the export format
+  mode.ts        Ward Hub ↔ Ward Health mode cookie
+```
+
+Tests: `tests/unit/health-energy.test.ts` (calorie and macro calculations,
+units), `tests/unit/health-progress.test.ts` (trend, streaks, PRs, overload,
+catalogues, weekly summary) and `tests/db/health.test.ts` (privacy, import,
+reset, demo data).
+
 ## Project layout
 
 ```

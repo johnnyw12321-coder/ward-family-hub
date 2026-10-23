@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "cn";
 import { Logo } from "@/components/shared/logo";
+import { SwitchToHealthLink } from "@/features/health/components/mode-switch";
 import { MORE_NAV, PRIMARY_NAV, isActive, type NavItem } from "./nav-items";
 
 function SideLink({ item, pathname }: { item: NavItem; pathname: string }) {
@@ -46,6 +47,7 @@ function SidebarNavView({ pathname }: { pathname: string }) {
           <SideLink key={item.href} item={item} pathname={pathname} />
         ))}
       </nav>
+      <SwitchToHealthLink />
     </aside>
   );
 }
