@@ -201,16 +201,19 @@ export function WorkoutLogger({
                 ))}
               </ol>
             ) : null}
-            <div className="flex items-end gap-2 p-3">
-              <span className="mb-3 w-12 shrink-0 pl-1 text-xs text-muted-foreground">Set {mine.length + 1}</span>
-              {b.kind === "weight" ? <Stepper label={unit} value={d.weight} step={units === "imperial" ? 5 : 2.5} onChange={(v) => setDraft(i, { weight: v })} ariaLabel={`Weight for ${b.name}`} /> : null}
-              {b.kind === "time" ? (
-                <Stepper label="sec" value={d.seconds} step={5} onChange={(v) => setDraft(i, { seconds: v })} ariaLabel={`Seconds for ${b.name}`} />
-              ) : (
-                <Stepper label="reps" value={d.reps} step={1} onChange={(v) => setDraft(i, { reps: v })} ariaLabel={`Reps for ${b.name}`} />
-              )}
-              <Button size="icon-lg" onClick={() => log(i)} disabled={pending} aria-label={`Log set ${mine.length + 1} of ${b.name}`} className="shrink-0">
+            {/* Phone-first: steppers share the card's width, the log button sits underneath. */}
+            <div className="space-y-2 p-3">
+              <div className={cn("grid gap-2", b.kind === "weight" ? "grid-cols-2" : "grid-cols-1")}>
+                {b.kind === "weight" ? <Stepper label={unit} value={d.weight} step={units === "imperial" ? 5 : 2.5} onChange={(v) => setDraft(i, { weight: v })} ariaLabel={`Weight for ${b.name}`} /> : null}
+                {b.kind === "time" ? (
+                  <Stepper label="seconds" value={d.seconds} step={5} onChange={(v) => setDraft(i, { seconds: v })} ariaLabel={`Seconds for ${b.name}`} />
+                ) : (
+                  <Stepper label="reps" value={d.reps} step={1} onChange={(v) => setDraft(i, { reps: v })} ariaLabel={`Reps for ${b.name}`} />
+                )}
+              </div>
+              <Button size="lg" variant="secondary" className="w-full" onClick={() => log(i)} disabled={pending} aria-label={`Log set ${mine.length + 1} of ${b.name}`}>
                 {pending ? <Spinner /> : <CheckIcon aria-hidden />}
+                Log set {mine.length + 1}
               </Button>
             </div>
           </section>
@@ -276,22 +279,25 @@ export function WorkoutLogger({
 function Stepper({ label, value, step, onChange, ariaLabel }: { label: string; value: string; step: number; onChange: (v: string) => void; ariaLabel: string }) {
   const n = num(value || "0");
   const bump = (dir: number) => onChange(String(Math.max(0, Math.round((n + dir * step) * 100) / 100)));
+  const btn = "flex size-11 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted";
   return (
-    <div className="min-w-0 flex-1">
+    <div className="min-w-0">
       <div className="mb-1 text-center text-[11px] font-medium text-muted-foreground uppercase">{label}</div>
-      <InputGroup className="h-12">
-        <InputGroupAddon>
-          <button type="button" className="flex size-8 items-center justify-center rounded-lg hover:bg-muted" onClick={() => bump(-1)} aria-label={`Less (${ariaLabel})`}>
-            <MinusIcon className="size-4" aria-hidden />
-          </button>
-        </InputGroupAddon>
-        <InputGroupInput inputMode="decimal" className="text-center text-base font-semibold tabular" value={value} onChange={(e) => onChange(e.target.value)} aria-label={ariaLabel} />
-        <InputGroupAddon align="inline-end">
-          <button type="button" className="flex size-8 items-center justify-center rounded-lg hover:bg-muted" onClick={() => bump(1)} aria-label={`More (${ariaLabel})`}>
-            <PlusIcon className="size-4" aria-hidden />
-          </button>
-        </InputGroupAddon>
-      </InputGroup>
+      <div className="flex h-12 items-center overflow-hidden rounded-xl border border-input bg-background has-[input:focus-visible]:ring-3 has-[input:focus-visible]:ring-ring/50 dark:bg-input/30">
+        <button type="button" className={btn} onClick={() => bump(-1)} aria-label={`Less (${ariaLabel})`}>
+          <MinusIcon className="size-4" aria-hidden />
+        </button>
+        <input
+          inputMode="decimal"
+          className="h-full w-full min-w-0 flex-1 bg-transparent text-center text-lg font-semibold tabular outline-none"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={ariaLabel}
+        />
+        <button type="button" className={btn} onClick={() => bump(1)} aria-label={`More (${ariaLabel})`}>
+          <PlusIcon className="size-4" aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }

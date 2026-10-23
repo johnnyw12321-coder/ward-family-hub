@@ -49,7 +49,7 @@ async function PlanDetail({ params }: { params: PageProps<"/health/diet/[plan]">
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <ListCard title="Suits" icon={<UsersIcon className="size-4" aria-hidden />} items={diet.suits} />
         <ListCard title="Pros" icon={<ThumbsUpIcon className="size-4 text-success" aria-hidden />} items={diet.pros} />
         <ListCard title="Cons" icon={<ThumbsDownIcon className="size-4 text-warning" aria-hidden />} items={diet.cons} />
@@ -75,7 +75,7 @@ async function PlanDetail({ params }: { params: PageProps<"/health/diet/[plan]">
         <p className="mt-2 px-1 text-xs text-muted-foreground">Portions scale to your calorie target; log what you actually eat in Track.</p>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ListCard title="Build meals around" icon={<CheckIcon className="size-4 text-success" aria-hidden />} items={diet.foods.eat} />
         <ListCard title="Go easy on" icon={<MinusIcon className="size-4 text-warning" aria-hidden />} items={diet.foods.limit} />
       </section>
