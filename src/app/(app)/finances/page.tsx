@@ -70,7 +70,7 @@ async function Overview() {
           <h2 className="mb-3 text-sm font-semibold">Where the money went</h2>
           <dl className="grid grid-cols-3 gap-3 text-sm">
             <div>
-              <dt className="text-xs text-muted-foreground">Loans & mortgage paid</dt>
+              <dt className="text-xs text-muted-foreground">Debts paid</dt>
               <dd className="font-semibold">
                 <FitText><Money minor={summary.loan_payment_minor} /></FitText>
               </dd>
