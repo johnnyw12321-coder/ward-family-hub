@@ -156,6 +156,7 @@ export type SummaryRow = {
   interest_minor: Minor;
   savings_transfer_minor: Minor;
   debt_principal_minor: Minor;
+  loan_payment_minor: Minor;
   transaction_count: number;
 };
 

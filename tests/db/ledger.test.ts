@@ -1,5 +1,6 @@
 import type { PGlite, Transaction } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
+import { leftOver, type PeriodSummary } from "@/lib/finance/calculations";
 import { asUser, categoryId, createTestDb, seedHouseholds, type Fixture } from "./harness";
 
 let db: PGlite;
@@ -11,11 +12,11 @@ let carLoan: string;
 
 const J = () => f.jonathan;
 
-async function create(tx: Transaction, name: string, type: string, opening = 0): Promise<string> {
+async function create(tx: Transaction, name: string, type: string, opening = 0, openedAt = "2026-01-01T12:00:00Z"): Promise<string> {
   const r = await tx.query<{ id: string }>(
     `select public.create_account(p_household_id => $1, p_name => $2, p_type => $3::public.account_type,
-       p_opening_balance_minor => $4, p_opening_date => '2026-01-01T12:00:00Z') as id`,
-    [f.householdA, name, type, opening],
+       p_opening_balance_minor => $4, p_opening_date => $5) as id`,
+    [f.householdA, name, type, opening, openedAt],
   );
   return r.rows[0].id;
 }
@@ -211,6 +212,74 @@ describe("classification", () => {
       debt_principal_minor: 250_000,
     });
     expect(await balance(carLoan)).toBe(-8_000_000 + 250_000);
+  });
+
+  it("takes loan and mortgage payments off what's left over, without counting card purchases twice", async () => {
+    const salary = await categoryId(db, f.householdA, "Employment Income");
+    const groceries = await categoryId(db, f.householdA, "Groceries");
+    const mortgage = await asUser(db, J(), (tx) => create(tx, "Mortgage", "mortgage", -50_000_000, "2026-09-30T12:00:00Z"));
+    const holidayFund = await asUser(db, J(), (tx) => create(tx, "Holiday fund", "savings"));
+    await save({
+      p_kind: "income", p_amount_minor: 1_000_000, p_account_id: chequing, p_occurred_at: "2026-10-01T12:00:00Z",
+      p_description: "Salary", p_category_id: salary,
+    });
+    await save({
+      p_kind: "expense", p_amount_minor: 100_000, p_account_id: chequing, p_occurred_at: "2026-10-02T12:00:00Z",
+      p_description: "Groceries", p_category_id: groceries,
+    });
+    // A plain transfer into a loan account, as entered with the + button.
+    await save({
+      p_kind: "transfer", p_amount_minor: 200_000, p_account_id: chequing, p_to_account_id: carLoan,
+      p_occurred_at: "2026-10-03T12:00:00Z", p_description: "Extra car loan payment",
+    });
+    // A card purchase is spending once; paying the card off is not taken off again.
+    await save({
+      p_kind: "expense", p_amount_minor: 50_000, p_account_id: card, p_occurred_at: "2026-10-03T15:00:00Z",
+      p_description: "Groceries on Visa", p_category_id: groceries, p_payment_method: "credit_card",
+    });
+    await save({
+      p_kind: "transfer", p_amount_minor: 50_000, p_account_id: chequing, p_to_account_id: card,
+      p_occurred_at: "2026-10-04T12:00:00Z", p_description: "Pay Visa",
+    });
+    // Money moved to savings is still the household's.
+    await save({
+      p_kind: "transfer", p_amount_minor: 100_000, p_account_id: chequing, p_to_account_id: holidayFund,
+      p_occurred_at: "2026-10-04T13:00:00Z", p_description: "Holiday fund",
+    });
+    // A mortgage bill that pays down the mortgage account, settled from the bills list.
+    await asUser(db, J(), async (tx) => {
+      const bill = await tx.query<{ id: string }>(
+        `insert into public.recurring_items (household_id, name, bill_type, amount_minor, anchor_date, next_due_date,
+           account_id, liability_account_id) values ($1, 'Mortgage', 'mortgage', 400000, '2026-10-05', '2026-10-05', $2, $3)
+         returning id`,
+        [f.householdA, chequing, mortgage],
+      );
+      await tx.query(`select public.settle_recurring($1, $2, '2026-10-05', 'paid', p_paid_on => '2026-10-05')`, [
+        f.householdA,
+        bill.rows[0].id,
+      ]);
+      // A split debt payment: principal is a transfer, interest is spending.
+      await tx.query(`select public.record_debt_payment($1, $2, $3, 150000, 30000, '2026-10-06T12:00:00Z', 'Car loan')`, [
+        f.householdA,
+        chequing,
+        carLoan,
+      ]);
+    });
+
+    const r = await asUser(db, J(), (tx) =>
+      tx.query<Record<string, number>>(`select * from public.report_summary($1, '2026-10-01', '2026-10-31')`, [f.householdA]),
+    );
+    const s = Object.fromEntries(Object.entries(r.rows[0]).map(([k, v]) => [k, Number(v)]));
+    expect(s).toMatchObject({
+      income_minor: 1_000_000,
+      expense_minor: 100_000 + 50_000 + 30_000, // groceries, card groceries and interest; no transfers
+      interest_minor: 30_000,
+      savings_transfer_minor: 100_000,
+      debt_principal_minor: 200_000 + 50_000 + 400_000 + 150_000,
+      loan_payment_minor: 200_000 + 400_000 + 150_000, // card payment excluded
+    });
+    expect(leftOver(s as PeriodSummary)).toBe(1_000_000 - 180_000 - 750_000);
+    expect(await balance(mortgage)).toBe(-50_000_000 + 400_000);
   });
 
   it("produces month-by-month totals including empty months", async () => {

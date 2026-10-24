@@ -12,7 +12,7 @@ import { CardSkeleton } from "@/components/shared/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { LinkedDocuments } from "@/features/documents/components/linked-documents";
 import { deleteRecurring, setRecurringActive, undoRecurringPayment } from "@/features/finance/actions";
-import { dueLabel, dueState } from "@/features/finance/bills";
+import { dueLabel, dueState, isDebtBillType } from "@/features/finance/bills";
 import { EditRecurringButton, SettleButtons } from "@/features/finance/components/recurring-forms";
 import { getAccounts, getCategories, getRecurringItem, getRecurringPayments } from "@/features/finance/queries";
 import { BILL_TYPE_LABELS } from "@/features/finance/types";
@@ -128,6 +128,12 @@ async function BillDetail({ params }: { params: PageProps<"/finances/bills/[id]"
         </dl>
         {item.is_active && upcoming.length ? (
           <p className="mt-3 text-xs text-muted-foreground">Coming up: {upcoming.map(formatDate).join(", ")}</p>
+        ) : null}
+        {!income && !liability && isDebtBillType(item.bill_type) ? (
+          <p className="mt-3 text-xs text-warning">
+            Payments are recorded as spending because this bill doesn&apos;t pay down an account. Edit it and choose the
+            loan, mortgage or card under &ldquo;Pays down&rdquo; to record them as transfers instead.
+          </p>
         ) : null}
       </section>
 

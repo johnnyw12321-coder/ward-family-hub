@@ -9,9 +9,9 @@ import {
   progressPercent,
   projectGoal,
   projectPayoff,
-  savingsRate,
+  leftOver,
+  leftOverRate,
   summariseBalances,
-  surplus,
 } from "@/lib/finance/calculations";
 
 describe("balances", () => {
@@ -64,12 +64,14 @@ describe("budgets", () => {
 });
 
 describe("period summary", () => {
-  it("computes surplus and savings rate", () => {
-    const s = { income_minor: 2_000_000, expense_minor: 1_500_000 };
-    expect(surplus(s)).toBe(500_000);
-    expect(savingsRate(s)).toBe(25);
-    expect(savingsRate({ income_minor: 0, expense_minor: 10 })).toBeNull();
-    expect(savingsRate({ income_minor: 100, expense_minor: 150 })).toBe(-50);
+  it("computes what is left over after spending and loan payments", () => {
+    const s = { income_minor: 2_000_000, expense_minor: 1_500_000, loan_payment_minor: 0 };
+    expect(leftOver(s)).toBe(500_000);
+    expect(leftOverRate(s)).toBe(25);
+    expect(leftOver({ ...s, loan_payment_minor: 400_000 })).toBe(100_000);
+    expect(leftOverRate({ ...s, loan_payment_minor: 400_000 })).toBe(5);
+    expect(leftOverRate({ income_minor: 0, expense_minor: 10, loan_payment_minor: 0 })).toBeNull();
+    expect(leftOverRate({ income_minor: 100, expense_minor: 100, loan_payment_minor: 50 })).toBe(-50);
   });
 
   it("computes percentage change", () => {
@@ -138,7 +140,7 @@ describe("goals", () => {
 });
 
 import { monthlyEquivalent } from "@/lib/finance/calculations";
-import { dueLabel, dueState } from "@/features/finance/bills";
+import { dueLabel, dueState, suggestedLiabilityAccount } from "@/features/finance/bills";
 
 describe("recurring commitments", () => {
   it("normalises schedules to a monthly amount", () => {
@@ -154,5 +156,20 @@ describe("recurring commitments", () => {
     expect(dueState("2026-10-16", "2026-10-14", 3)).toBe("due-soon");
     expect(dueState("2026-10-30", "2026-10-14", 3)).toBe("upcoming");
     expect(dueLabel("2026-10-10", "2026-10-14")).toBe("4 days overdue");
+  });
+
+  it("links debt bills to the account they pay down, so payments are transfers", () => {
+    const accounts = [
+      { id: "chq", type: "chequing" as const },
+      { id: "visa", type: "credit_card" as const },
+      { id: "car", type: "loan" as const },
+      { id: "home", type: "mortgage" as const },
+    ];
+    expect(suggestedLiabilityAccount("mortgage", accounts)?.id).toBe("home");
+    expect(suggestedLiabilityAccount("car_loan", accounts)?.id).toBe("car");
+    expect(suggestedLiabilityAccount("loan", accounts)?.id).toBe("car");
+    expect(suggestedLiabilityAccount("credit_card", accounts)?.id).toBe("visa");
+    expect(suggestedLiabilityAccount("utility", accounts)).toBeUndefined();
+    expect(suggestedLiabilityAccount("mortgage", accounts.slice(0, 3))).toBeUndefined();
   });
 });

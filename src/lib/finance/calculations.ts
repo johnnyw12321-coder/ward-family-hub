@@ -132,21 +132,26 @@ export type PeriodSummary = {
   interest_minor: Minor;
   savings_transfer_minor: Minor;
   debt_principal_minor: Minor;
+  /** Payments into loans, mortgages and lines of credit; credit card payments excluded. */
+  loan_payment_minor: Minor;
 };
 
-/** Surplus is income minus spending (interest included; transfers excluded). */
-export function surplus(summary: Pick<PeriodSummary, "income_minor" | "expense_minor">): Minor {
-  return summary.income_minor - summary.expense_minor;
-}
+type LeftOverInput = Pick<PeriodSummary, "income_minor" | "expense_minor" | "loan_payment_minor">;
 
 /**
- * Savings rate = surplus / income, as a percentage: the share of income not
- * spent (it may be held as cash, saved, or used to pay down debt principal).
- * Negative when spending exceeds income.
+ * Left over = income - spending - loan and mortgage payments: what is really
+ * left of the period's income. Interest is already in spending. Credit card
+ * payments are not taken off, because the purchases already count as
+ * spending. Money moved to savings is still the household's, so it stays in.
  */
-export function savingsRate(summary: Pick<PeriodSummary, "income_minor" | "expense_minor">): number | null {
+export function leftOver(summary: LeftOverInput): Minor {
+  return summary.income_minor - summary.expense_minor - summary.loan_payment_minor;
+}
+
+/** Left over as a percentage of income. Negative when more went out than came in. */
+export function leftOverRate(summary: LeftOverInput): number | null {
   if (summary.income_minor <= 0) return null;
-  return percentOf(surplus(summary), summary.income_minor);
+  return percentOf(leftOver(summary), summary.income_minor);
 }
 
 /** Percentage change from previous to current; null when there is no baseline. */

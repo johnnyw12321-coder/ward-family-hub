@@ -206,6 +206,8 @@ export async function getSummary(ctx: HouseholdContext, from: CalendarDate, to: 
     interest_minor: toMinor(r.interest_minor),
     savings_transfer_minor: toMinor(r.savings_transfer_minor),
     debt_principal_minor: toMinor(r.debt_principal_minor),
+    // Zero until the left-over migration is applied, so the app keeps working before it.
+    loan_payment_minor: toMinor(r.loan_payment_minor ?? 0),
     transaction_count: Number(r.transaction_count),
   };
 }

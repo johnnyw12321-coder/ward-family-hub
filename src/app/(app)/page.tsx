@@ -29,7 +29,7 @@ import { buildInputs, getContributions, getGoals, getMilestones } from "@/featur
 import { getOpenTasks } from "@/features/tasks/queries";
 import { memberName, requireHousehold } from "@/lib/auth/context";
 import { addMonths, formatDate, monthEnd, monthLabel, monthStart } from "@/lib/dates";
-import { percentChange, summariseBalances, surplus } from "@/lib/finance/calculations";
+import { leftOver, percentChange, summariseBalances } from "@/lib/finance/calculations";
 import { safeToSpend } from "@/lib/finance/forecast";
 
 export const metadata: Metadata = { title: "Home" };
@@ -87,7 +87,7 @@ async function Dashboard() {
     today,
   );
   const balances = summariseBalances(accounts, assetValue);
-  const net = surplus(summary);
+  const net = leftOver(summary);
   const spendChange = percentChange(summary.expense_minor, lastSummary.expense_minor);
   const overdueBills = recurring.filter((r) => r.direction === "bill" && r.next_due_date < today);
   const budgetLines = budget.filter((b) => b.allocation_id);
@@ -127,8 +127,8 @@ async function Dashboard() {
         <FitText className="mt-1 text-3xl font-semibold tracking-tight tabular">
           <Money minor={net} tone="plain" />
         </FitText>
-        <div className="text-sm text-primary-foreground/80">{net >= 0 ? "surplus" : "deficit"} this month</div>
-        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-primary-foreground/15 pt-4 text-sm">
+        <div className="text-sm text-primary-foreground/80">{net >= 0 ? "left over" : "short"} this month</div>
+        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-primary-foreground/15 pt-4 text-sm">
           <div>
             <div className="text-primary-foreground/75">Income</div>
             <FitText className="font-semibold tabular">
@@ -146,7 +146,18 @@ async function Dashboard() {
               </div>
             ) : null}
           </div>
+          <div>
+            <div className="text-primary-foreground/75">Loans & mortgage</div>
+            <FitText className="font-semibold tabular">
+              <Money minor={summary.loan_payment_minor} />
+            </FitText>
+          </div>
         </div>
+        {summary.savings_transfer_minor > 0 ? (
+          <p className="mt-3 text-xs text-primary-foreground/75">
+            <Money minor={summary.savings_transfer_minor} /> moved to savings is still yours, so it isn&apos;t taken off.
+          </p>
+        ) : null}
       </section>
 
       <Suspense fallback={<CardSkeleton lines={6} />}>
