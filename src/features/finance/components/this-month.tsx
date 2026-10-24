@@ -26,7 +26,7 @@ type RowProps = {
 };
 
 /**
- * Bills, expected income and budget for this month and next, in one place,
+ * Expected income, bills and budget for this month and next, in one place,
  * each bill with who's responsible and a one-tap "Pay". Next month is there
  * because pay days don't line up with months: bills for next month are often
  * paid from this month's salary. Used on Home and the Finances overview.
@@ -52,8 +52,8 @@ export async function ThisMonth({ ctx }: { ctx: HouseholdContext }) {
   };
   const toPay = (g: MonthGroup) => g.entries.filter((e) => e.status === "due" || e.status === "overdue").length;
   return (
-    <section aria-label="Bills and budget">
-      <SectionHeading title="Bills & budget" />
+    <section aria-label="Income, bills and budget">
+      <SectionHeading title="Income, bills & budget" />
       <MonthTabs
         label="Month"
         tabs={[
@@ -86,8 +86,8 @@ export function MonthPanel({
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 [&>*]:min-w-0">
       <div className="space-y-3">
-        <BillsCard group={bills} month={month} {...rowProps} />
         {income.entries.length ? <IncomeCard group={income} month={month} {...rowProps} /> : null}
+        <BillsCard group={bills} month={month} {...rowProps} />
       </div>
       <BudgetCard budget={budget} month={month} today={rowProps.today} current={current} />
     </div>
