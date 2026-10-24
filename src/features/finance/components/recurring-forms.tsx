@@ -21,6 +21,7 @@ import { isLiability, type AccountType } from "@/lib/finance/calculations";
 import { currencySymbol } from "@/lib/money";
 import { RECURRENCE_PRESETS } from "@/lib/recurrence";
 import { saveRecurring, settleRecurring } from "../actions";
+import { isDebtBillType, suggestedLiabilityAccount } from "../bills";
 import { recurringSchema, settleSchema, type RecurringInput, type SettleInput } from "../schemas";
 import { BILL_TYPES_FOR_BILLS, BILL_TYPES_FOR_INCOME, BILL_TYPE_LABELS, type Category } from "../types";
 import type { MemberOption } from "./transaction-form";
@@ -71,7 +72,7 @@ function RecurringForm({ direction, accounts, categories, members, currency, tod
   const cats = categories.filter((c) => c.kind === kind && !c.is_archived);
   const parents = cats.filter((c) => !c.parent_id);
   const liabilities = accounts.filter((a) => isLiability(a.type));
-  const debtType = ["mortgage", "car_loan", "loan", "credit_card"].includes(billType);
+  const debtType = isDebtBillType(billType);
   const editing = Boolean(initial?.id);
 
   return (
@@ -100,7 +101,17 @@ function RecurringForm({ direction, accounts, categories, members, currency, tod
         <div className="grid grid-cols-2 gap-3">
           <Field>
             <FieldLabel htmlFor="rc-type">Type</FieldLabel>
-            <NativeSelect id="rc-type" {...register("billType")}>
+            <NativeSelect
+              id="rc-type"
+              {...register("billType", {
+                // A loan, mortgage or card bill pays down that account, so its payments are transfers, not spending.
+                onChange: (e) => {
+                  if (form.getValues("liabilityAccountId")) return;
+                  const match = suggestedLiabilityAccount(e.target.value, liabilities);
+                  if (match) form.setValue("liabilityAccountId", match.id);
+                },
+              })}
+            >
               {types.map((t) => (
                 <option key={t} value={t}>
                   {BILL_TYPE_LABELS[t]}
@@ -178,8 +189,9 @@ function RecurringForm({ direction, accounts, categories, members, currency, tod
               ))}
             </NativeSelect>
             <FieldDescription>
-              Payments become a transfer to this account, so they reduce the debt and aren&apos;t counted as spending twice.
-              Use “Record payment” on the account to split out interest.
+              {liabilityId
+                ? "Payments become a transfer to this account, so they reduce the debt and aren’t counted as spending. Use “Record payment” on the account to split out interest."
+                : "Without an account, each payment is recorded as spending and lowers this month’s surplus. Choose the loan, mortgage or card it pays off to record a transfer instead."}
             </FieldDescription>
           </Field>
         ) : null}

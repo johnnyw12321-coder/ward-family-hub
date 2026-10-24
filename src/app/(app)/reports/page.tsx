@@ -17,7 +17,7 @@ import { loadReport } from "@/features/reports/data";
 import { PERIOD_PRESETS, resolvePeriod } from "@/features/reports/period";
 import { requireHousehold } from "@/lib/auth/context";
 import { formatDate, formatInstant } from "@/lib/dates";
-import { percentChange, savingsRate, surplus } from "@/lib/finance/calculations";
+import { leftOver, leftOverRate, percentChange } from "@/lib/finance/calculations";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -55,9 +55,9 @@ async function Report({ searchParams }: { searchParams: SP }) {
   const ctx = await requireHousehold();
   const period = resolvePeriod(sp, ctx.today);
   const { summary, previous, comparison, income, monthly, history, assetCosts } = await loadReport(ctx, period);
-  const net = surplus(summary);
-  const prevNet = surplus(previous);
-  const rate = savingsRate(summary);
+  const net = leftOver(summary);
+  const prevNet = leftOver(previous);
+  const rate = leftOverRate(summary);
   const currentYear = Number(ctx.today.slice(0, 4));
   const years = Array.from({ length: 15 }, (_, i) => currentYear - i);
   const query = new URLSearchParams(Object.entries({ preset: period.preset, from: sp.from, to: sp.to, year: sp.year }).filter(([, v]) => v) as [string, string][]);
@@ -125,8 +125,8 @@ async function Report({ searchParams }: { searchParams: SP }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Income" value={<Money minor={summary.income_minor} />} hint={<Change now={summary.income_minor} before={previous.income_minor} />} />
         <StatCard label="Spending" value={<Money minor={summary.expense_minor} />} hint={<Change now={summary.expense_minor} before={previous.expense_minor} invert />} />
-        <StatCard label={net >= 0 ? "Surplus" : "Deficit"} value={<Money minor={Math.abs(net)} />} hint={<>was <Money minor={prevNet} /></>} />
-        <StatCard label="Savings rate" value={rate === null ? "—" : `${rate}%`} hint="Share of income not spent" />
+        <StatCard label={net >= 0 ? "Left over" : "Short"} value={<Money minor={Math.abs(net)} />} hint={<>was <Money minor={prevNet} /></>} />
+        <StatCard label="Kept" value={rate === null ? "—" : `${rate}%`} hint="Share of income left after spending and loan payments" />
       </div>
 
       <section className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
@@ -148,6 +148,8 @@ async function Report({ searchParams }: { searchParams: SP }) {
                 ["  of which interest", summary.interest_minor, previous.interest_minor, true],
                 ["Moved to savings", summary.savings_transfer_minor, previous.savings_transfer_minor, false],
                 ["Debt principal repaid", summary.debt_principal_minor, previous.debt_principal_minor, false],
+                ["  of which loans & mortgage", summary.loan_payment_minor, previous.loan_payment_minor, false],
+                ["Left over", net, prevNet, false],
               ] as const
             ).map(([label, now, before, invert]) => (
               <tr key={label} className="border-t">
@@ -274,7 +276,8 @@ async function Report({ searchParams }: { searchParams: SP }) {
 
       <p className="px-1 text-xs text-muted-foreground">
         All figures are calculated from recorded transactions, so past periods don&apos;t change when budgets change. Transfers
-        between your own accounts are never counted as income or spending.
+        between your own accounts are never counted as income or spending. Left over is income minus spending minus loan and
+        mortgage payments; credit card payments aren&apos;t taken off because the purchases already count as spending.
       </p>
     </div>
   );

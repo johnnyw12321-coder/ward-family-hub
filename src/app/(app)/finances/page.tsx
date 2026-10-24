@@ -17,7 +17,7 @@ import { assetsNetWorthValue, getAssets } from "@/features/assets/queries";
 import { getAccounts, getCategoryTotals, getMonthly, getSummary } from "@/features/finance/queries";
 import { requireHousehold } from "@/lib/auth/context";
 import { addMonths, monthEnd, monthLabel, monthStart } from "@/lib/dates";
-import { savingsRate, summariseBalances, surplus } from "@/lib/finance/calculations";
+import { leftOver, leftOverRate, summariseBalances } from "@/lib/finance/calculations";
 
 export const metadata: Metadata = { title: "Finances" };
 
@@ -42,8 +42,8 @@ async function Overview() {
   ]);
   const assetValue = assetsNetWorthValue(assets);
   const balances = summariseBalances(accounts, assetValue);
-  const rate = savingsRate(summary);
-  const net = surplus(summary);
+  const rate = leftOverRate(summary);
+  const net = leftOver(summary);
 
   return (
     <div className="space-y-6">
@@ -53,9 +53,9 @@ async function Overview() {
         <StatCard label="Income" value={<Money minor={summary.income_minor} />} />
         <StatCard label="Spending" value={<Money minor={summary.expense_minor} />} />
         <StatCard
-          label={net >= 0 ? "Surplus" : "Deficit"}
+          label={net >= 0 ? "Left over" : "Short"}
           value={<Money minor={Math.abs(net)} />}
-          hint={rate !== null ? `${rate}% of income unspent` : "No income recorded yet"}
+          hint={rate !== null ? `${rate}% of income, after loan payments` : "No income recorded yet"}
           tone={net >= 0 ? "primary" : "default"}
         />
         <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint={assetValue ? "Accounts, home & vehicles" : "Across all accounts"} href="/reports" />
@@ -65,20 +65,20 @@ async function Overview() {
         <ThisMonth ctx={ctx} />
       </Suspense>
 
-      {summary.savings_transfer_minor || summary.debt_principal_minor || summary.interest_minor ? (
+      {summary.savings_transfer_minor || summary.loan_payment_minor || summary.interest_minor ? (
         <section className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
-          <h2 className="mb-3 text-sm font-semibold">Where the surplus went</h2>
+          <h2 className="mb-3 text-sm font-semibold">Where the money went</h2>
           <dl className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <dt className="text-xs text-muted-foreground">Loans & mortgage paid</dt>
+              <dd className="font-semibold">
+                <FitText><Money minor={summary.loan_payment_minor} /></FitText>
+              </dd>
+            </div>
             <div>
               <dt className="text-xs text-muted-foreground">Moved to savings</dt>
               <dd className="font-semibold">
                 <FitText><Money minor={summary.savings_transfer_minor} /></FitText>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Debt principal paid</dt>
-              <dd className="font-semibold">
-                <FitText><Money minor={summary.debt_principal_minor} /></FitText>
               </dd>
             </div>
             <div>
@@ -89,8 +89,8 @@ async function Overview() {
             </div>
           </dl>
           <p className="mt-3 text-xs text-muted-foreground">
-            Transfers to savings and debt principal aren&apos;t spending, so they don&apos;t reduce the surplus. Credit card
-            purchases count once, when you buy — not again when you pay the card.
+            Loan and mortgage payments are taken off what&apos;s left over. Money moved to savings is still yours, so it
+            isn&apos;t. Credit card purchases count once, as spending when you buy — not again when you pay the card.
           </p>
         </section>
       ) : null}
