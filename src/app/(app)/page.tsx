@@ -122,13 +122,6 @@ async function Dashboard() {
         </Link>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Available cash" value={<Money minor={balances.availableCash} />} hint="Cash + chequing" href="/finances/accounts" />
-        <StatCard label="Savings" value={<Money minor={balances.savings} />} href="/finances/accounts" />
-        <StatCard label="Owed" value={<Money minor={balances.totalLiabilities} />} hint="Cards and loans" href="/finances/debts" />
-        <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint={assetValue ? "Incl. home & vehicles" : "Accounts only"} href="/reports" />
-      </div>
-
       <section aria-label={`${monthLabel(month)} at a glance`} className="rounded-3xl bg-primary p-5 text-primary-foreground shadow-float">
         <div className="text-sm text-primary-foreground/80">{monthLabel(month)} so far</div>
         <FitText className="mt-1 text-3xl font-semibold tracking-tight tabular">
@@ -167,6 +160,11 @@ async function Dashboard() {
         ) : null}
       </section>
 
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Available cash" value={<Money minor={balances.availableCash} />} hint="Cash + chequing" href="/finances/accounts" />
+        <StatCard label="Savings" value={<Money minor={balances.savings} />} href="/finances/accounts" />
+      </div>
+
       <Suspense fallback={<CardSkeleton lines={6} />}>
         <ThisMonth ctx={ctx} />
       </Suspense>
@@ -198,6 +196,11 @@ async function Dashboard() {
           <p className="mt-2 text-[11px] text-muted-foreground">An estimate from your recurring items; bills charged to a credit card aren&apos;t included.</p>
         </section>
       ) : null}
+
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Owed" value={<Money minor={balances.totalLiabilities} />} hint="Cards and loans" href="/finances/debts" />
+        <StatCard label="Net worth" value={<Money minor={balances.netWorth} />} hint={assetValue ? "Incl. home & vehicles" : "Accounts only"} href="/reports" />
+      </div>
 
       {!setupComplete ? (
         <section className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80">
