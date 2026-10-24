@@ -147,7 +147,7 @@ async function Dashboard() {
             ) : null}
           </div>
           <div>
-            <div className="text-primary-foreground/75">Loans & mortgage</div>
+            <div className="text-primary-foreground/75">Debts</div>
             <FitText className="font-semibold tabular">
               <Money minor={summary.loan_payment_minor} />
             </FitText>
