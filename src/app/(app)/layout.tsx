@@ -5,6 +5,7 @@ import { QuickAdd } from "@/components/layout/quick-add";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { UserMenu } from "@/components/layout/user-menu";
 import { AccentSync } from "@/components/shared/accent-sync";
+import { AmountSums } from "@/components/shared/amount-sums";
 import { Logo } from "@/components/shared/logo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAboutOptions } from "@/features/calendar/about-options";
@@ -43,6 +44,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
       <BottomNav />
+      <AmountSums />
       <Suspense fallback={null}>
         <QuickAddLoader />
       </Suspense>

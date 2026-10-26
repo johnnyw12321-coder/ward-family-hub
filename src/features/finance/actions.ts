@@ -6,6 +6,7 @@ import { dbErrorMessage, fail, logServerError, ok, zodFieldErrors, type ActionRe
 import { getActionContext } from "@/lib/auth/context";
 import { localToInstant, monthStart, isCalendarDate } from "@/lib/dates";
 import { isLiability } from "@/lib/finance/calculations";
+import { rateForMonth } from "./until";
 import { parseMoney } from "@/lib/money";
 import { parsePreset } from "@/lib/recurrence";
 import {
@@ -487,12 +488,17 @@ export async function saveAllocation(raw: unknown): Promise<ActionResult> {
     logServerError("saveAllocation.budget", budget.error);
     return fail(dbErrorMessage(budget.error));
   }
+  const entered = parseMoney(v.amount) ?? 0;
+  const rate = v.ratePeriod === "month" ? null : { rate_minor: entered, rate_period: v.ratePeriod };
   const { error } = await ctx.supabase.from("budget_allocations").upsert(
     {
       household_id: ctx.household.id,
       budget_id: budget.data.id,
       category_id: v.categoryId,
-      amount_minor: parseMoney(v.amount) ?? 0,
+      // A rate's monthly amount is worked out for this month's days.
+      amount_minor: rate ? rateForMonth(entered, v.ratePeriod, v.month) : entered,
+      rate_minor: rate?.rate_minor ?? null,
+      rate_period: rate?.rate_period ?? null,
       carry_forward: v.carryForward,
     },
     { onConflict: "budget_id,category_id" },

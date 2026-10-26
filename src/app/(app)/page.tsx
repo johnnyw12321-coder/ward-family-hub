@@ -6,9 +6,11 @@ import { Money } from "@/components/shared/money";
 import { CardSkeleton, PageSkeleton } from "@/components/shared/skeletons";
 import { FitText } from "@/components/shared/fit-text";
 import { StatCard } from "@/components/shared/stat-card";
+import { NeedUntil } from "@/features/finance/components/need-until";
 import { ThisMonth } from "@/features/finance/components/this-month";
 import { getAccounts, getRecurringItems, getSummary } from "@/features/finance/queries";
-import { requireHousehold } from "@/lib/auth/context";
+import { getUntilData } from "@/features/finance/until-data";
+import { requireHousehold, type HouseholdContext } from "@/lib/auth/context";
 import { addMonths, formatDate, monthEnd, monthLabel, monthStart } from "@/lib/dates";
 import { leftOver, percentChange, summariseBalances } from "@/lib/finance/calculations";
 
@@ -57,6 +59,10 @@ async function Dashboard() {
           {greeting(hour)}, {ctx.me.display_name}
         </h1>
       </div>
+
+      <Suspense fallback={<CardSkeleton lines={1} />}>
+        <NeedUntilLoader ctx={ctx} />
+      </Suspense>
 
       {overdueBills.length > 0 ? (
         <Link
@@ -118,4 +124,8 @@ async function Dashboard() {
       </Suspense>
     </div>
   );
+}
+
+async function NeedUntilLoader({ ctx }: { ctx: HouseholdContext }) {
+  return <NeedUntil data={await getUntilData(ctx)} />;
 }
