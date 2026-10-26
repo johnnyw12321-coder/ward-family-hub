@@ -1,17 +1,32 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangleIcon, BellIcon, CheckCheckIcon, OctagonAlertIcon, XIcon } from "lucide-react";
+import { AlarmClockIcon, AlertTriangleIcon, BellIcon, CheckCheckIcon, OctagonAlertIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
+import { ResponsiveModal } from "@/components/shared/responsive-modal";
 import { Button } from "@/components/ui/button";
+import type { CalendarDate } from "@/lib/dates";
 import { dismissNotification, markAllNotificationsRead, markNotificationRead } from "../actions";
+import type { ReminderState } from "../reminders";
+import { ReminderEditor } from "./reminder-editor";
 
-type Item = { id: string; severity: "info" | "warning" | "critical"; title: string; body: string | null; link_path: string | null; read: boolean; when: string };
+type Item = {
+  id: string;
+  severity: "info" | "warning" | "critical";
+  title: string;
+  body: string | null;
+  link_path: string | null;
+  read: boolean;
+  when: string;
+  /** Present when this is a reminder for an item whose reminder can be changed. */
+  reminder?: ReminderState;
+};
 
-export function NotificationList({ items }: { items: Item[] }) {
+export function NotificationList({ items, today, canEditReminders }: { items: Item[]; today: CalendarDate; canEditReminders: boolean }) {
   const [pending, start] = useTransition();
+  const [editing, setEditing] = useState<Item | null>(null);
   const router = useRouter();
   const unread = items.filter((i) => !i.read).length;
   return (
@@ -64,9 +79,14 @@ export function NotificationList({ items }: { items: Item[] }) {
                 {n.body ? <span className="block text-xs text-muted-foreground">{n.body}</span> : null}
                 <span className="block text-[11px] text-muted-foreground">{n.when}</span>
               </button>
+              {canEditReminders && n.reminder ? (
+                <Button variant="ghost" size="icon" aria-label={`Edit reminder: ${n.title}`} disabled={pending} onClick={() => setEditing(n)}>
+                  <AlarmClockIcon />
+                </Button>
+              ) : null}
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size="icon"
                 aria-label={`Dismiss: ${n.title}`}
                 disabled={pending}
                 onClick={() =>
@@ -82,6 +102,9 @@ export function NotificationList({ items }: { items: Item[] }) {
           );
         })}
       </ul>
+      <ResponsiveModal open={editing !== null} onOpenChange={(o) => !o && setEditing(null)} title="Edit reminder" description={editing?.title}>
+        {editing?.reminder ? <ReminderEditor state={editing.reminder} today={today} onDone={() => setEditing(null)} /> : null}
+      </ResponsiveModal>
     </div>
   );
 }

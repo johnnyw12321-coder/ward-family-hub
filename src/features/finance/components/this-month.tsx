@@ -6,11 +6,12 @@ import { memberColorClass } from "@/components/shared/member-color";
 import { Money } from "@/components/shared/money";
 import { SectionHeading } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
-import { getAccounts, getBudgetProgress, getPaymentsDueBetween, getRecurringItems } from "@/features/finance/queries";
+import { getAccounts, getBudgetProgress, getCategories, getPaymentsDueBetween, getRecurringItems, getSummary } from "@/features/finance/queries";
 import type { HouseholdContext } from "@/lib/auth/context";
 import { addMonths, diffDays, formatDate, monthEnd, monthLabel, monthStart, type CalendarDate } from "@/lib/dates";
 import { budgetStatus, monthElapsedPercent, type AccountType } from "@/lib/finance/calculations";
-import { minorToInput } from "@/lib/money";
+import { minorToInput, type Minor } from "@/lib/money";
+import { expectedSpending, type ExpectedSpending } from "../expected";
 import { monthEntries, type MonthEntry, type MonthGroup } from "../month";
 import { BudgetBar } from "./budget-bar";
 import { MonthTabs } from "./month-tabs";
@@ -34,16 +35,21 @@ type RowProps = {
 export async function ThisMonth({ ctx }: { ctx: HouseholdContext }) {
   const month = monthStart(ctx.today);
   const next = addMonths(month, 1);
-  const [items, payments, budget, nextBudget, accounts] = await Promise.all([
+  const [items, payments, budget, nextBudget, accounts, categories, summary] = await Promise.all([
     getRecurringItems(ctx, { includeInactive: true }),
     getPaymentsDueBetween(ctx, month, monthEnd(next)),
     getBudgetProgress(ctx, month),
     getBudgetProgress(ctx, next),
     getAccounts(ctx),
+    getCategories(ctx, { includeArchived: true }),
+    getSummary(ctx, month, monthEnd(month)),
   ]);
   const own = items.filter((i) => i.currency === ctx.household.base_currency);
   const now = monthEntries(own, payments, month, ctx.today);
   const later = monthEntries(own, payments, next, ctx.today);
+  const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
+  // Money that has gone out this month: spending plus loan and mortgage payments.
+  const spentNow = summary.expense_minor + summary.loan_payment_minor;
   const rowProps: RowProps = {
     today: ctx.today,
     accounts: accounts.map((a) => ({ id: a.id, name: a.name, type: a.type })),
@@ -61,13 +67,25 @@ export async function ThisMonth({ ctx }: { ctx: HouseholdContext }) {
             key: "this",
             label: monthLabel(month).split(" ")[0],
             badge: toPay(now.bills) ? String(toPay(now.bills)) : undefined,
-            content: <MonthPanel {...now} budget={budget} month={month} current {...rowProps} />,
+            content: (
+              <MonthPanel {...now} budget={budget} expected={expectedSpending(now.bills, budget, parentOf)} spent={spentNow} month={month} current {...rowProps} />
+            ),
           },
           {
             key: "next",
             label: monthLabel(next).split(" ")[0],
             badge: toPay(later.bills) ? String(toPay(later.bills)) : undefined,
-            content: <MonthPanel {...later} budget={nextBudget} month={next} current={false} {...rowProps} />,
+            content: (
+              <MonthPanel
+                {...later}
+                budget={nextBudget}
+                expected={expectedSpending(later.bills, nextBudget, parentOf)}
+                spent={null}
+                month={next}
+                current={false}
+                {...rowProps}
+              />
+            ),
           },
         ]}
       />
@@ -79,18 +97,98 @@ export function MonthPanel({
   bills,
   income,
   budget,
+  expected,
+  spent,
   month,
   current,
   ...rowProps
-}: { bills: MonthGroup; income: MonthGroup; budget: BudgetRows; month: CalendarDate; current: boolean } & RowProps) {
+}: {
+  bills: MonthGroup;
+  income: MonthGroup;
+  budget: BudgetRows;
+  expected: ExpectedSpending;
+  /** Gone out so far (this month only). */
+  spent: Minor | null;
+  month: CalendarDate;
+  current: boolean;
+} & RowProps) {
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 [&>*]:min-w-0">
+      <ExpectedCard expected={expected} income={income} spent={spent} month={month} />
       <div className="space-y-3">
         {income.entries.length ? <IncomeCard group={income} month={month} {...rowProps} /> : null}
         <BillsCard group={bills} month={month} {...rowProps} />
       </div>
       <BudgetCard budget={budget} month={month} today={rowProps.today} current={current} />
     </div>
+  );
+}
+
+/** Bills and budget as one number, so the month's cost is clear at a glance. */
+function ExpectedCard({ expected, income, spent, month }: { expected: ExpectedSpending; income: MonthGroup; spent: Minor | null; month: CalendarDate }) {
+  const name = monthLabel(month).split(" ")[0];
+  const left = income.total - expected.total;
+  const over = spent !== null && spent > expected.total;
+  return (
+    <section aria-label={`Expected spending in ${monthLabel(month)}`} className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/80 lg:col-span-2">
+      <h3 className="font-semibold">Expected spending · {name}</h3>
+      <div className="mt-1 text-3xl font-semibold tracking-tight tabular">
+        <Money minor={expected.total} trimZeroCents />
+      </div>
+      {spent !== null ? (
+        <div className="mt-2 space-y-1.5">
+          <ProgressLine value={spent} total={expected.total} tone={over ? "destructive" : "primary"} label={`Share of ${monthLabel(month)}'s expected spending gone out`} />
+          <p className="text-sm text-muted-foreground">
+            <Money minor={spent} trimZeroCents className="font-medium text-foreground" /> gone out so far ·{" "}
+            {over ? (
+              <span className="font-medium text-destructive">
+                <Money minor={spent - expected.total} trimZeroCents /> over
+              </span>
+            ) : (
+              <>
+                <Money minor={expected.total - spent} trimZeroCents className="font-medium text-foreground" /> still to come
+              </>
+            )}
+          </p>
+        </div>
+      ) : (
+        <p className="mt-1 text-sm text-muted-foreground">What {name} is set to cost, from your bills and budget.</p>
+      )}
+      <dl className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-muted/50 p-3">
+          <dt className="text-xs text-muted-foreground">Bills</dt>
+          <dd className="font-semibold tabular">
+            <Money minor={expected.billsMinor} trimZeroCents />
+          </dd>
+          <dd className="text-[11px] text-muted-foreground">
+            {expected.billCount} {expected.billCount === 1 ? "bill" : "bills"}
+          </dd>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-3">
+          <dt className="text-xs text-muted-foreground">Budget</dt>
+          <dd className="font-semibold tabular">
+            <Money minor={expected.budgetMinor} trimZeroCents />
+          </dd>
+          <dd className="text-[11px] text-muted-foreground">
+            {expected.budgetCount ? `${expected.budgetCount} ${expected.budgetCount === 1 ? "category" : "categories"}` : "Not set yet"}
+            {expected.coveredBillCount ? ` · incl. ${expected.coveredBillCount} ${expected.coveredBillCount === 1 ? "bill" : "bills"}` : ""}
+          </dd>
+        </div>
+      </dl>
+      {income.total > 0 ? (
+        <p className="mt-3 flex items-baseline justify-between gap-3 border-t pt-3 text-sm">
+          <span className="text-muted-foreground">
+            Left over after <Money minor={income.total} trimZeroCents /> expected income
+          </span>
+          <Money minor={left} trimZeroCents className={cn("font-semibold", left < 0 ? "text-destructive" : "text-success")} />
+        </p>
+      ) : null}
+      {expected.coveredBillCount ? (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Bills in a budgeted category count towards that budget (whichever is larger), so nothing is counted twice.
+        </p>
+      ) : null}
+    </section>
   );
 }
 
