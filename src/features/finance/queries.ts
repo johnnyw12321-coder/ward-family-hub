@@ -269,16 +269,30 @@ export async function getBudgetProgress(ctx: HouseholdContext, month: CalendarDa
     p_month: month,
   });
   if (error) throw new QueryError("budget", error);
-  return (data as Record<string, unknown>[]).map((r) => ({
-    allocation_id: (r.allocation_id as string) ?? null,
-    category_id: (r.category_id as string) ?? null,
-    category_name: r.category_name as string,
-    parent_id: (r.parent_id as string) ?? null,
-    allocated_minor: toMinor(r.allocated_minor),
-    carried_in_minor: toMinor(r.carried_in_minor),
-    spent_minor: toMinor(r.spent_minor),
-    carry_forward: Boolean(r.carry_forward),
-  }));
+  const rows = data as Record<string, unknown>[];
+  // Rates aren't part of budget_progress; read them from the allocations.
+  const ids = rows.map((r) => r.allocation_id as string | null).filter((x): x is string => Boolean(x));
+  const rates = new Map<string, { rate_minor: unknown; rate_period: unknown }>();
+  if (ids.length) {
+    const res = await ctx.supabase.from("budget_allocations").select("id, rate_minor, rate_period").eq("household_id", ctx.household.id).in("id", ids);
+    if (res.error) throw new QueryError("budget rates", res.error);
+    for (const a of res.data ?? []) rates.set(a.id, a);
+  }
+  return rows.map((r) => {
+    const rate = r.allocation_id ? rates.get(r.allocation_id as string) : undefined;
+    return {
+      allocation_id: (r.allocation_id as string) ?? null,
+      category_id: (r.category_id as string) ?? null,
+      category_name: r.category_name as string,
+      parent_id: (r.parent_id as string) ?? null,
+      allocated_minor: toMinor(r.allocated_minor),
+      carried_in_minor: toMinor(r.carried_in_minor),
+      spent_minor: toMinor(r.spent_minor),
+      carry_forward: Boolean(r.carry_forward),
+      rate_minor: rate?.rate_minor === null || rate?.rate_minor === undefined ? null : toMinor(rate.rate_minor),
+      rate_period: (rate?.rate_period as BudgetProgressRow["rate_period"]) ?? null,
+    };
+  });
 }
 
 export async function getBudgetMonths(ctx: HouseholdContext): Promise<CalendarDate[]> {

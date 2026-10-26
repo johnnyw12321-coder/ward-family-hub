@@ -21,6 +21,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     // Long-press the home-screen icon (Android) for these.
     shortcuts: [
+      { name: "How much do we need until…?", short_name: "Need until", url: "/?until=1", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Add expense", short_name: "Expense", url: "/?add=expense", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Add income", short_name: "Income", url: "/?add=income", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Transactions", url: "/finances/transactions", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },

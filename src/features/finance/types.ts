@@ -148,6 +148,9 @@ export type BudgetProgressRow = {
   carried_in_minor: Minor;
   spent_minor: Minor;
   carry_forward: boolean;
+  /** Set when the line was entered as a rate; allocated_minor is the month's share of it. */
+  rate_minor: Minor | null;
+  rate_period: "day" | "weekday" | "week" | null;
 };
 
 export type SummaryRow = {

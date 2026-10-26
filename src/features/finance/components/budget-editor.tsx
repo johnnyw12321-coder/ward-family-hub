@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CopyIcon, PencilIcon, PlusIcon } from "lucide-react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { ResponsiveModal } from "@/components/shared/responsive-modal";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,9 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
-import { currencySymbol } from "@/lib/money";
+import { formatMoney, currencySymbol, parseMoney } from "@/lib/money";
+import { daysInMonth, rateForMonth, weekdaysBetween } from "../until";
+import { monthEnd, monthLabel } from "@/lib/dates";
 import { copyBudget, deleteAllocation, saveAllocation } from "../actions";
 import { allocationSchema, type AllocationInput } from "../schemas";
 import type { Category } from "../types";
@@ -35,9 +37,22 @@ function AllocationForm({
   const [pending, start] = useTransition();
   const form = useForm<AllocationInput>({
     resolver: zodResolver(allocationSchema),
-    defaultValues: { month, categoryId: "", amount: "", carryForward: false, ...initial },
+    defaultValues: { month, categoryId: "", amount: "", ratePeriod: "month", carryForward: false, ...initial },
   });
   const err = form.formState.errors;
+  const [amount, ratePeriod] = useWatch({ control: form.control, name: ["amount", "ratePeriod"] });
+  const entered = parseMoney(amount ?? "", currency);
+  const monthName = monthLabel(month).split(" ")[0];
+  const preview =
+    entered !== null && ratePeriod !== "month"
+      ? `${formatMoney(rateForMonth(entered, ratePeriod, month), { currency })} for ${monthName} (${
+          ratePeriod === "weekday"
+            ? `${weekdaysBetween(month, monthEnd(month))} weekdays`
+            : ratePeriod === "day"
+              ? `${daysInMonth(month)} days`
+              : `about ${(Math.round((daysInMonth(month) / 7) * 10) / 10).toLocaleString("en-GB")} weeks`
+        })`
+      : null;
   const parents = categories.filter((c) => !c.parent_id);
   const editing = Boolean(initial?.categoryId);
   return (
@@ -90,16 +105,30 @@ function AllocationForm({
             <FieldError>{err.categoryId?.message}</FieldError>
           </Field>
         )}
-        <Field data-invalid={Boolean(err.amount)}>
-          <FieldLabel htmlFor="al-amount">Monthly amount</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <InputGroupText>{currencySymbol(currency)}</InputGroupText>
-            </InputGroupAddon>
-            <InputGroupInput id="al-amount" inputMode="decimal" className="tabular" autoFocus {...form.register("amount")} />
-          </InputGroup>
-          <FieldError>{err.amount?.message}</FieldError>
-        </Field>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+          <Field data-invalid={Boolean(err.amount)}>
+            <FieldLabel htmlFor="al-amount">Amount</FieldLabel>
+            <InputGroup>
+              <InputGroupAddon>
+                <InputGroupText>{currencySymbol(currency)}</InputGroupText>
+              </InputGroupAddon>
+              <InputGroupInput id="al-amount" inputMode="decimal" className="tabular" autoFocus {...form.register("amount")} />
+            </InputGroup>
+            <FieldError>{err.amount?.message}</FieldError>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="al-per">Per</FieldLabel>
+            <NativeSelect id="al-per" {...form.register("ratePeriod")}>
+              <option value="month">Month</option>
+              <option value="week">Week</option>
+              <option value="weekday">Weekday (Mon–Fri)</option>
+              <option value="day">Day</option>
+            </NativeSelect>
+          </Field>
+        </div>
+        <FieldDescription className="-mt-2">
+          {preview ?? "Spending you think of by the week or day, like gas or travel to work? Choose it under Per."}
+        </FieldDescription>
         <Controller
           control={form.control}
           name="carryForward"

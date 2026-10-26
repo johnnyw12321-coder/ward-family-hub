@@ -171,6 +171,8 @@ export const allocationSchema = z.object({
   month: calendarDate.refine((d) => d.endsWith("-01"), "Use the first day of the month"),
   categoryId: z.uuid("Choose a category"),
   amount: nonNegativeMoney.refine((v) => v !== "", "Enter an amount"),
+  /** What the amount is per: "month" is a plain monthly budget; the rest are rates. */
+  ratePeriod: z.enum(["month", "week", "weekday", "day"]),
   carryForward: z.boolean(),
 });
 export type AllocationInput = z.infer<typeof allocationSchema>;

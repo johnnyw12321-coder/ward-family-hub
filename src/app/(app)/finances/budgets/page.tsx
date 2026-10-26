@@ -9,6 +9,7 @@ import { CardSkeleton } from "@/components/shared/skeletons";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import { AddAllocationButton, CopyBudgetButton, EditAllocationButton } from "@/features/finance/components/budget-editor";
+import { RATE_PERIOD_LABELS } from "@/features/finance/until";
 import { BudgetBar } from "@/features/finance/components/budget-bar";
 import { getBudgetMonths, getBudgetProgress, getCategories, getCategoryTotals } from "@/features/finance/queries";
 import { requireHousehold } from "@/lib/auth/context";
@@ -129,6 +130,11 @@ async function BudgetView({ searchParams }: { searchParams: PageProps<"/finances
                         spent={l.spent_minor}
                         pacePercent={pace}
                       />
+                      {l.rate_minor !== null && l.rate_period ? (
+                        <div className="-mt-2 pb-1 text-xs text-muted-foreground">
+                          <Money minor={l.rate_minor} /> {RATE_PERIOD_LABELS[l.rate_period]}
+                        </div>
+                      ) : null}
                       {last > 0 ? (
                         <div className="-mt-2 pb-3 text-xs text-muted-foreground">
                           {monthLabel(prev, "short")}: <Money minor={last} />
@@ -146,7 +152,13 @@ async function BudgetView({ searchParams }: { searchParams: PageProps<"/finances
                           currency={ctx.household.base_currency}
                           allocationId={l.allocation_id!}
                           name={l.category_name}
-                          initial={{ month, categoryId: l.category_id!, amount: minorToInput(l.allocated_minor), carryForward: l.carry_forward }}
+                          initial={{
+                            month,
+                            categoryId: l.category_id!,
+                            amount: minorToInput(l.rate_minor ?? l.allocated_minor),
+                            ratePeriod: l.rate_period ?? "month",
+                            carryForward: l.carry_forward,
+                          }}
                         />
                       </div>
                     ) : null}
