@@ -170,6 +170,39 @@ describe("how much we need until a date", () => {
     expect(needUntil(input).lines[0].amountMinor).toBe(300_00);
   });
 
+  it("counts only the chosen dates when they start later", () => {
+    const r = needUntil({
+      ...base,
+      from: "2026-11-07", // Sat 7 → Fri 13 Nov: 7 days, 5 weekdays
+      availableCashMinor: 500_00,
+      budget: [line({ categoryId: "travel", name: "Travel", rateMinor: 30_00, ratePeriod: "weekday" })],
+      recurring: [
+        bill({ id: "late", name: "Water", nextDueDate: "2026-10-20", anchorDate: "2026-01-20" }), // overdue: not these dates
+        bill({ id: "internet", name: "Internet", nextDueDate: "2026-11-05" }), // before the start
+        bill({ id: "phone", name: "Phone", nextDueDate: "2026-11-10", anchorDate: "2026-01-10" }),
+        bill({ id: "pay", direction: "income", name: "Salary", amountMinor: 8000_00, nextDueDate: "2026-11-10", anchorDate: "2026-01-10" }),
+      ],
+    });
+    expect(r).toMatchObject({ from: "2026-11-07", until: "2026-11-13", days: 7, weekdays: 5, startsLater: true });
+    expect(r.lines[0].amountMinor).toBe(150_00);
+    expect(r.bills.map((b) => b.name)).toEqual(["Phone"]);
+    expect(r.leftOverMinor).toBe(8000_00 - 150_00 - 100_00); // today's cash isn't counted
+  });
+
+  it("finds a bill's later occurrence in a window that starts after its next due date", () => {
+    const r = needUntil({
+      ...base,
+      from: "2026-11-07",
+      until: "2026-12-05",
+      recurring: [bill({ id: "internet", name: "Internet", nextDueDate: "2026-11-05" })],
+    });
+    expect(r.bills.map((b) => b.date)).toEqual(["2026-12-05"]);
+  });
+
+  it("starts today when the start is in the past", () => {
+    expect(needUntil({ ...base, from: "2026-10-01" })).toMatchObject({ from: "2026-11-02", startsLater: false });
+  });
+
   it("treats a date before today as today", () => {
     expect(needUntil({ ...base, until: "2026-10-01" })).toMatchObject({ until: "2026-11-02", days: 1 });
   });

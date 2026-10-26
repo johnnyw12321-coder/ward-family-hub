@@ -40,12 +40,13 @@ function explain(l: UntilLine, currency: string): string {
   return l.amountMinor > l.fromBudgetMinor ? `Bills: ${names} (more than the budget share of ${formatMoney(l.fromBudgetMinor, { currency, trimZeroCents: true })})` : `${base} · incl. ${names}`;
 }
 
-/** "How much do we need until…?": pick a date, see the total and why. */
+/** "How much do we need until…?": pick a date (and, if not today, a start), see the total and why. */
 export function NeedUntil({ data }: { data: UntilData }) {
   const router = useRouter();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
   const quick = quickDates(data.today);
+  const [from, setFrom] = useState<CalendarDate>(data.today);
   const [until, setUntil] = useState<CalendarDate>(quick.friday);
   const [overrides, setOverrides] = useState<Map<string, Minor>>(new Map());
   const [editing, setEditing] = useState<string | null>(null);
@@ -62,15 +63,17 @@ export function NeedUntil({ data }: { data: UntilData }) {
 
   const parentOf = useMemo(() => new Map(data.parents), [data.parents]);
   const r = useMemo(
-    () => needUntil({ today: data.today, until, budget: data.budget, recurring: data.recurring, parentOf, availableCashMinor: data.cashMinor, overrides }),
-    [data, until, parentOf, overrides],
+    () => needUntil({ today: data.today, from, until, budget: data.budget, recurring: data.recurring, parentOf, availableCashMinor: data.cashMinor, overrides }),
+    [data, from, until, parentOf, overrides],
   );
 
   const chips: { label: string; date: CalendarDate }[] = [
     { label: "This Friday", date: quick.friday },
     ...(data.payday && data.payday !== quick.friday ? [{ label: "Next payday", date: data.payday }] : []),
     ...(quick.monthEnd !== quick.friday && quick.monthEnd !== data.payday ? [{ label: "End of month", date: quick.monthEnd }] : []),
-  ].sort((a, b) => a.date.localeCompare(b.date));
+  ]
+    .filter((c) => c.date >= from)
+    .sort((a, b) => a.date.localeCompare(b.date));
   const money = (m: Minor) => <Money minor={m} trimZeroCents />;
   const saveDraft = (categoryId: string) => {
     const v = evaluate(draft);
@@ -90,7 +93,7 @@ export function NeedUntil({ data }: { data: UntilData }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-semibold">How much do we need until…?</span>
-          <span className="block text-sm text-muted-foreground">Pick a date to see the total for bills and everyday spending</span>
+          <span className="block text-sm text-muted-foreground">Pick dates to see the total for bills and everyday spending</span>
         </span>
         <ChevronRightIcon className="size-4 text-muted-foreground" aria-hidden />
       </button>
@@ -124,23 +127,49 @@ export function NeedUntil({ data }: { data: UntilData }) {
                   </button>
                 ))}
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Or pick a date</span>
-                <Input
-                  type="date"
-                  className="h-11 w-auto"
-                  value={until}
-                  min={data.today}
-                  max={addDays(data.today, 366)}
-                  onChange={(e) => e.target.value && setUntil(e.target.value)}
-                  aria-label="Until date"
-                />
-              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1 text-sm">
+                  <span className="flex items-center justify-between gap-2 text-muted-foreground">
+                    From
+                    {from !== data.today ? (
+                      <button type="button" className="text-xs font-medium text-primary" onClick={() => setFrom(data.today)}>
+                        Today
+                      </button>
+                    ) : null}
+                  </span>
+                  <Input
+                    type="date"
+                    className="h-11 min-w-0"
+                    value={from}
+                    min={data.today}
+                    max={addDays(data.today, 366)}
+                    onChange={(e) => {
+                      const d = e.target.value;
+                      if (!d) return;
+                      setFrom(d);
+                      if (d > until) setUntil(d);
+                    }}
+                    aria-label="From date"
+                  />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="block text-muted-foreground">Until</span>
+                  <Input
+                    type="date"
+                    className="h-11 min-w-0"
+                    value={until}
+                    min={from}
+                    max={addDays(data.today, 366)}
+                    onChange={(e) => e.target.value && setUntil(e.target.value)}
+                    aria-label="Until date"
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
               <div className="text-sm text-primary-foreground/80">
-                Today to {dayHeading(r.until)} · {r.days} {r.days === 1 ? "day" : "days"}
+                {r.startsLater ? dayHeading(r.from) : "Today"} to {dayHeading(r.until)} · {r.days} {r.days === 1 ? "day" : "days"}
               </div>
               <div className="text-3xl font-semibold tracking-tight tabular" aria-live="polite">
                 {money(r.totalMinor)}
@@ -237,14 +266,21 @@ export function NeedUntil({ data }: { data: UntilData }) {
             ) : null}
 
             <section aria-label="Compared with what we have" className="space-y-1.5 rounded-xl bg-muted/50 p-3 text-sm">
-              <div className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Cash and chequing now</span>
-                <span className="tabular">{money(r.cashMinor)}</span>
-              </div>
+              {r.startsLater ? (
+                <p className="text-xs text-muted-foreground">
+                  {r.income.length ? "Pay coming in on these dates" : "No pay comes in on these dates"}, against what they need. Cash on hand today isn&apos;t counted.
+                </p>
+              ) : (
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Cash and chequing now</span>
+                  <span className="tabular">{money(r.cashMinor)}</span>
+                </div>
+              )}
               {r.income.map((i) => (
                 <div key={`${i.id}-${i.date}`} className="flex justify-between gap-3">
                   <span className="text-muted-foreground">
-                    + {i.name}, {dayHeading(i.date)}
+                    {r.startsLater ? "" : "+ "}
+                    {i.name}, {dayHeading(i.date)}
                   </span>
                   <span className="tabular">{money(i.amountMinor)}</span>
                 </div>

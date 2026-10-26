@@ -1,6 +1,6 @@
 /**
- * "How much do we need until …?" — the money needed from today through a
- * chosen date, with the reasons. Pure so it can be tested without a database.
+ * "How much do we need until …?" — the money needed from today (or a later
+ * day) through a chosen date, with the reasons. Pure so it can be tested without a database.
  *
  *  - Budget lines contribute day by day: a day rate every day, a weekday rate
  *    Monday–Friday, a week rate ÷ 7 a day, and a monthly amount spread evenly
@@ -11,8 +11,10 @@
  *    whichever is larger — the same rule as Expected spending. Bills charged
  *    to a credit card are left out: no cash leaves until the card is paid.
  *  - Income due in the window, and the cash on hand, show what's left after.
+ *    A window that starts later leaves out today's cash and bills already
+ *    overdue: it's what those dates themselves need.
  *
- * Today and the chosen date both count.
+ * The first and last days both count.
  */
 import { addDays, compareDates, diffDays, monthEnd, monthStart, weekday, type CalendarDate } from "@/lib/dates";
 import type { Minor } from "@/lib/money";
@@ -92,6 +94,8 @@ export type UntilRecurring = {
 
 export type UntilInput = {
   today: CalendarDate;
+  /** The first day counted; today unless a later day is chosen. */
+  from?: CalendarDate;
   until: CalendarDate;
   budget: UntilBudgetLine[];
   recurring: UntilRecurring[];
@@ -135,8 +139,10 @@ export type UntilResult = {
   totalMinor: Minor;
   incomeMinor: Minor;
   cashMinor: Minor;
-  /** cash + income − total; negative means short. */
+  /** cash + income − total (income − total when the window starts later); negative means short. */
   leftOverMinor: Minor;
+  /** The window starts after today, so today's cash isn't part of the comparison. */
+  startsLater: boolean;
   cardBillsLeftOut: number;
 };
 
@@ -146,15 +152,22 @@ function linesForMonth(byMonth: Map<CalendarDate, UntilBudgetLine[]>, months: Ca
   return earlier.length ? byMonth.get(earlier[earlier.length - 1])! : [];
 }
 
-/** Unpaid occurrences of a recurring item within the window (an overdue one counts for bills). */
-function occurrencesInWindow(r: UntilRecurring, from: CalendarDate, until: CalendarDate): UntilBill[] {
+/**
+ * Unpaid occurrences of a recurring item within the window. An overdue bill
+ * counts when the window starts today; a window that starts later only has
+ * what falls due inside it.
+ */
+function occurrencesInWindow(r: UntilRecurring, today: CalendarDate, from: CalendarDate, until: CalendarDate): UntilBill[] {
   if (!r.isActive || compareDates(r.nextDueDate, until) > 0) return [];
   const out: UntilBill[] = [];
-  const overdue = compareDates(r.nextDueDate, from) < 0;
+  const overdue = compareDates(r.nextDueDate, today) < 0;
   // The outstanding occurrence itself (an overdue bill is still owed; overdue income isn't counted on).
-  if (!overdue || r.direction === "bill") out.push({ id: r.id, name: r.name, date: r.nextDueDate, amountMinor: r.amountMinor, overdue });
+  if (overdue ? r.direction === "bill" && from === today : compareDates(r.nextDueDate, from) >= 0) {
+    out.push({ id: r.id, name: r.name, date: r.nextDueDate, amountMinor: r.amountMinor, overdue });
+  }
   // Then any later ones in the window, as the forecast does.
-  const start = overdue ? from : addDays(r.nextDueDate, 1);
+  const afterDue = addDays(r.nextDueDate, 1);
+  const start = compareDates(afterDue, from) > 0 ? afterDue : from;
   for (const d of occurrencesBetween(r.anchorDate, r.frequency, r.intervalCount, start, until, r.endDate)) {
     if (compareDates(d, r.nextDueDate) <= 0) continue;
     out.push({ id: r.id, name: r.name, date: d, amountMinor: r.amountMinor, overdue: false });
@@ -163,8 +176,9 @@ function occurrencesInWindow(r: UntilRecurring, from: CalendarDate, until: Calen
 }
 
 export function needUntil(input: UntilInput): UntilResult {
-  const from = input.today;
+  const from = input.from && compareDates(input.from, input.today) > 0 ? input.from : input.today;
   const until = compareDates(input.until, from) < 0 ? from : input.until;
+  const startsLater = from !== input.today;
   const overrides = input.overrides ?? new Map<string, Minor>();
   const byMonth = new Map<CalendarDate, UntilBudgetLine[]>();
   for (const l of input.budget) {
@@ -208,7 +222,7 @@ export function needUntil(input: UntilInput): UntilResult {
   const income: UntilBill[] = [];
   let cardBillsLeftOut = 0;
   for (const r of input.recurring) {
-    const occ = occurrencesInWindow(r, from, until);
+    const occ = occurrencesInWindow(r, input.today, from, until);
     if (!occ.length) continue;
     if (r.direction === "income") {
       income.push(...occ);
@@ -264,7 +278,8 @@ export function needUntil(input: UntilInput): UntilResult {
     totalMinor,
     incomeMinor,
     cashMinor: input.availableCashMinor,
-    leftOverMinor: input.availableCashMinor + incomeMinor - totalMinor,
+    leftOverMinor: (startsLater ? 0 : input.availableCashMinor) + incomeMinor - totalMinor,
+    startsLater,
     cardBillsLeftOut,
   };
 }
