@@ -114,12 +114,14 @@ export function carryForwardAmount(allocated: Minor, carriedIn: Minor, spent: Mi
 
 /**
  * Where the month should be by now if spending were even, for "on pace"
- * indicators. Returns the percentage of the month elapsed (0-100).
+ * indicators. Returns the percentage of the month elapsed (0-100) — for a
+ * line that starts part-way through, of the days it covers.
  */
-export function monthElapsedPercent(today: CalendarDate, monthStart: CalendarDate): number {
+export function monthElapsedPercent(today: CalendarDate, monthStart: CalendarDate, startsOn?: CalendarDate | null): number {
   const nextMonth = addMonths(monthStart, 1);
-  const total = diffDays(nextMonth, monthStart);
-  const elapsed = Math.min(total, Math.max(0, diffDays(today, monthStart) + 1));
+  const from = startsOn && startsOn > monthStart && startsOn < nextMonth ? startsOn : monthStart;
+  const total = diffDays(nextMonth, from);
+  const elapsed = Math.min(total, Math.max(0, diffDays(today, from) + 1));
   return new Decimal(elapsed).div(total).times(100).toDecimalPlaces(1).toNumber();
 }
 

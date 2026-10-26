@@ -60,3 +60,56 @@ describe("budget rates", () => {
     expect(byCat.get(groceries)).toMatchObject({ amount_minor: 120000, rate_minor: null, rate_period: null });
   });
 });
+
+describe("budget lines for the rest of a month", () => {
+  it("count only spending from the start day, and copy as a whole month", async () => {
+    const travel = await categoryId(db, f.householdA, "Taxi & Rideshare");
+    const budgetId = await asUser(db, f.jonathan, async (tx) => {
+      const acct = await tx.query<{ id: string }>(
+        `select public.create_account(p_household_id => $1, p_name => 'Chequing', p_type => 'chequing'::public.account_type,
+           p_opening_balance_minor => 100000, p_opening_date => '2026-01-01T12:00:00Z') as id`,
+        [f.householdA],
+      );
+      for (const [day, amt] of [["2026-10-10", 4000], ["2026-10-25", 3000], ["2026-10-27", 2500]] as const) {
+        await tx.query(
+          `select public.save_transaction(p_household_id => $1, p_kind => 'expense', p_amount_minor => $2, p_account_id => $3,
+             p_occurred_at => $4, p_description => 'taxi', p_category_id => $5)`,
+          [f.householdA, amt, acct.rows[0].id, `${day}T12:00:00Z`, travel],
+        );
+      }
+      const b = await tx.query<{ id: string }>(`insert into public.budgets (household_id, month) values ($1, '2026-10-01') returning id`, [f.householdA]);
+      // TT$30 a day from 25 Oct: 7 days.
+      await tx.query(
+        `insert into public.budget_allocations (household_id, budget_id, category_id, amount_minor, rate_minor, rate_period, starts_on)
+         values ($1, $2, $3, 21000, 3000, 'day', '2026-10-25')`,
+        [f.householdA, b.rows[0].id, travel],
+      );
+      return b.rows[0].id;
+    });
+
+    const progress = await asUser(db, f.jonathan, (tx) =>
+      tx.query<{ category_id: string | null; spent_minor: number }>(`select category_id, spent_minor from public.budget_progress($1, '2026-10-01')`, [f.householdA]),
+    );
+    const spent = new Map(progress.rows.map((r) => [r.category_id, Number(r.spent_minor)]));
+    expect(spent.get(travel)).toBe(5500); // 25 and 27 Oct
+    expect(spent.get(null)).toBe(4000); // 10 Oct, before the line started
+
+    await asUser(db, f.jonathan, (tx) => tx.query(`select public.copy_budget($1, '2026-10-01', '2026-11-01')`, [f.householdA]));
+    const nov = await db.query<{ amount_minor: number; starts_on: string | null }>(
+      `select a.amount_minor, a.starts_on from public.budget_allocations a join public.budgets b on b.id = a.budget_id
+       where b.household_id = $1 and b.month = '2026-11-01' and a.category_id = $2`,
+      [f.householdA, travel],
+    );
+    expect(nov.rows[0]).toMatchObject({ amount_minor: 90000, starts_on: null }); // 30 days × TT$30
+
+    // The start day has to be in the budget's month, and only a rate can have one.
+    await expect(
+      asUser(db, f.jonathan, (tx) => tx.query(`update public.budget_allocations set starts_on = '2026-11-02' where budget_id = $1`, [budgetId])),
+    ).rejects.toThrow(/budget's month/);
+    await expect(
+      asUser(db, f.jonathan, (tx) =>
+        tx.query(`update public.budget_allocations set rate_minor = null, rate_period = null where budget_id = $1`, [budgetId]),
+      ),
+    ).rejects.toThrow(/starts_on_rate/);
+  });
+});

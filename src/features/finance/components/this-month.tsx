@@ -436,7 +436,7 @@ function BudgetCard({ budget, month, today, current }: { budget: BudgetRows; mon
               allocated={b.allocated_minor}
               carriedIn={b.carried_in_minor}
               spent={b.spent_minor}
-              pacePercent={pace}
+              pacePercent={current ? monthElapsedPercent(today, month, b.starts_on) : undefined}
               compact
             />
           ))}

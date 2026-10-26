@@ -13,7 +13,7 @@ import { RATE_PERIOD_LABELS } from "@/features/finance/until";
 import { BudgetBar } from "@/features/finance/components/budget-bar";
 import { getBudgetMonths, getBudgetProgress, getCategories, getCategoryTotals } from "@/features/finance/queries";
 import { requireHousehold } from "@/lib/auth/context";
-import { addMonths, isCalendarDate, monthEnd, monthLabel, monthStart } from "@/lib/dates";
+import { addMonths, dayAndMonth, isCalendarDate, monthEnd, monthLabel, monthStart } from "@/lib/dates";
 import { BUDGET_WARNING_PERCENT, budgetStatus, monthElapsedPercent } from "@/lib/finance/calculations";
 import { minorToInput } from "@/lib/money";
 
@@ -73,7 +73,7 @@ async function BudgetView({ searchParams }: { searchParams: PageProps<"/finances
     <div className="space-y-5">
       <PageHeader
         title="Budget"
-        actions={ctx.canWrite && lines.length ? <AddAllocationButton month={month} categories={categories} currency={ctx.household.base_currency} label="Add" /> : null}
+        actions={ctx.canWrite && lines.length ? <AddAllocationButton month={month} today={ctx.today} categories={categories} currency={ctx.household.base_currency} label="Add" /> : null}
       />
       <nav aria-label="Month" className="flex items-center justify-between rounded-2xl bg-card p-1.5 shadow-card ring-1 ring-border/80">
         <Button asChild variant="ghost" size="icon">
@@ -128,11 +128,12 @@ async function BudgetView({ searchParams }: { searchParams: PageProps<"/finances
                         allocated={l.allocated_minor}
                         carriedIn={l.carried_in_minor}
                         spent={l.spent_minor}
-                        pacePercent={pace}
+                        pacePercent={isCurrent ? monthElapsedPercent(ctx.today, month, l.starts_on) : undefined}
                       />
                       {l.rate_minor !== null && l.rate_period ? (
                         <div className="-mt-2 pb-1 text-xs text-muted-foreground">
                           <Money minor={l.rate_minor} /> {RATE_PERIOD_LABELS[l.rate_period]}
+                          {l.starts_on ? ` · from ${dayAndMonth(l.starts_on)}` : ""}
                         </div>
                       ) : null}
                       {last > 0 ? (
@@ -148,6 +149,7 @@ async function BudgetView({ searchParams }: { searchParams: PageProps<"/finances
                       <div className="pt-2.5">
                         <EditAllocationButton
                           month={month}
+                          today={ctx.today}
                           categories={categories}
                           currency={ctx.household.base_currency}
                           allocationId={l.allocation_id!}
@@ -157,6 +159,7 @@ async function BudgetView({ searchParams }: { searchParams: PageProps<"/finances
                             categoryId: l.category_id!,
                             amount: minorToInput(l.rate_minor ?? l.allocated_minor),
                             ratePeriod: l.rate_period ?? "month",
+                            startsOn: l.starts_on,
                             carryForward: l.carry_forward,
                           }}
                         />
@@ -200,7 +203,7 @@ async function BudgetView({ searchParams }: { searchParams: PageProps<"/finances
             ctx.canWrite ? (
               <div className="flex flex-wrap justify-center gap-2">
                 {prevHasBudget ? <CopyBudgetButton from={prev} to={month} label={`Copy ${monthLabel(prev, "short")}`} variant="default" /> : null}
-                <AddAllocationButton month={month} categories={categories} currency={ctx.household.base_currency} />
+                <AddAllocationButton month={month} today={ctx.today} categories={categories} currency={ctx.household.base_currency} />
               </div>
             ) : undefined
           }

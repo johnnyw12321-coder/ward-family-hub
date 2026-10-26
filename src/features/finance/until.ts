@@ -43,16 +43,21 @@ export function weekdaysBetween(from: CalendarDate, to: CalendarDate): number {
   return n;
 }
 
-/** A rate as one month's budget amount; matches public.budget_rate_amount. */
-export function rateForMonth(rateMinor: Minor, period: RatePeriod, month: CalendarDate): Minor {
-  const first = monthStart(month);
+/**
+ * A rate as one month's budget amount; matches public.budget_rate_amount.
+ * With a start day in the month, only that day to the month's end counts.
+ */
+export function rateForMonth(rateMinor: Minor, period: RatePeriod, month: CalendarDate, startsOn?: CalendarDate | null): Minor {
+  const last = monthEnd(month);
+  const first = startsOn && compareDates(startsOn, monthStart(month)) > 0 ? startsOn : monthStart(month);
+  const days = diffDays(last, first) + 1;
   switch (period) {
     case "day":
-      return rateMinor * daysInMonth(first);
+      return rateMinor * days;
     case "weekday":
-      return rateMinor * weekdaysBetween(first, monthEnd(first));
+      return rateMinor * weekdaysBetween(first, last);
     case "week":
-      return Math.round((rateMinor * daysInMonth(first)) / 7);
+      return Math.round((rateMinor * days) / 7);
     default:
       return rateMinor;
   }
@@ -66,6 +71,8 @@ export type UntilBudgetLine = {
   amountMinor: Minor;
   rateMinor: Minor | null;
   ratePeriod: Exclude<RatePeriod, "month"> | null;
+  /** A rate line for only the rest of its month starts on this day. */
+  startsOn?: CalendarDate | null;
 };
 
 export type UntilRecurring = {
@@ -176,6 +183,7 @@ export function needUntil(input: UntilInput): UntilResult {
     if (isWeekday(d)) weekdays++;
     const month = monthStart(d);
     for (const l of linesForMonth(byMonth, months, month)) {
+      if (l.startsOn && compareDates(d, l.startsOn) < 0) continue;
       const period: RatePeriod = l.ratePeriod ?? "month";
       const override = overrides.get(l.categoryId);
       const rate = override ?? (l.ratePeriod ? (l.rateMinor ?? 0) : l.amountMinor);

@@ -44,7 +44,7 @@ export async function getUntilData(ctx: HouseholdContext): Promise<UntilData> {
     const monthOf = new Map(used.map((b) => [b.id, b.month as CalendarDate]));
     const res = await db
       .from("budget_allocations")
-      .select("budget_id, category_id, amount_minor, rate_minor, rate_period")
+      .select("budget_id, category_id, amount_minor, rate_minor, rate_period, starts_on")
       .eq("household_id", hh)
       .in("budget_id", [...monthOf.keys()]);
     if (res.error) throw new Error("Could not load budget lines");
@@ -55,6 +55,7 @@ export async function getUntilData(ctx: HouseholdContext): Promise<UntilData> {
       amountMinor: toMinor(a.amount_minor),
       rateMinor: a.rate_minor === null ? null : toMinor(a.rate_minor),
       ratePeriod: a.rate_period as UntilBudgetLine["ratePeriod"],
+      startsOn: a.starts_on as CalendarDate | null,
     }));
   }
 

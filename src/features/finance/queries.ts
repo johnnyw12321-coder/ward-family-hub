@@ -270,11 +270,11 @@ export async function getBudgetProgress(ctx: HouseholdContext, month: CalendarDa
   });
   if (error) throw new QueryError("budget", error);
   const rows = data as Record<string, unknown>[];
-  // Rates aren't part of budget_progress; read them from the allocations.
+  // Rates and start days aren't part of budget_progress; read them from the allocations.
   const ids = rows.map((r) => r.allocation_id as string | null).filter((x): x is string => Boolean(x));
-  const rates = new Map<string, { rate_minor: unknown; rate_period: unknown }>();
+  const rates = new Map<string, { rate_minor: unknown; rate_period: unknown; starts_on: unknown }>();
   if (ids.length) {
-    const res = await ctx.supabase.from("budget_allocations").select("id, rate_minor, rate_period").eq("household_id", ctx.household.id).in("id", ids);
+    const res = await ctx.supabase.from("budget_allocations").select("id, rate_minor, rate_period, starts_on").eq("household_id", ctx.household.id).in("id", ids);
     if (res.error) throw new QueryError("budget rates", res.error);
     for (const a of res.data ?? []) rates.set(a.id, a);
   }
@@ -291,6 +291,7 @@ export async function getBudgetProgress(ctx: HouseholdContext, month: CalendarDa
       carry_forward: Boolean(r.carry_forward),
       rate_minor: rate?.rate_minor === null || rate?.rate_minor === undefined ? null : toMinor(rate.rate_minor),
       rate_period: (rate?.rate_period as BudgetProgressRow["rate_period"]) ?? null,
+      starts_on: (rate?.starts_on as CalendarDate | null) ?? null,
     };
   });
 }

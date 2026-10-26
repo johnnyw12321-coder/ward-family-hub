@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { evaluate, formatResult, isExpression } from "@/lib/calc";
+import { monthElapsedPercent } from "@/lib/finance/calculations";
 import { needUntil, quickDates, rateForMonth, weekdaysBetween, type UntilBudgetLine, type UntilInput, type UntilRecurring } from "@/features/finance/until";
 
 const line = (o: Partial<UntilBudgetLine>): UntilBudgetLine => ({
@@ -57,6 +58,13 @@ describe("rate arithmetic (matches public.budget_rate_amount)", () => {
     expect(rateForMonth(200_00, "week", "2026-12-01")).toBe(88571);
     expect(rateForMonth(200_00, "week", "2027-02-01")).toBe(800_00);
     expect(rateForMonth(1200_00, "month", "2026-11-01")).toBe(1200_00);
+  });
+
+  it("covers only the rest of the month from a start day", () => {
+    expect(rateForMonth(30_00, "day", "2026-10-01", "2026-10-25")).toBe(210_00); // 25–31 Oct
+    expect(rateForMonth(30_00, "weekday", "2026-10-01", "2026-10-25")).toBe(150_00); // Mon 26 – Fri 30
+    expect(rateForMonth(262_50, "week", "2026-10-01", "2026-10-25")).toBe(262_50); // exactly a week
+    expect(rateForMonth(30_00, "day", "2026-10-01", "2026-10-01")).toBe(930_00);
   });
 
   it("counts weekdays", () => {
@@ -144,6 +152,17 @@ describe("how much we need until a date", () => {
     expect(r.leftOverMinor).toBe(500_00 + 8000_00 - 300_00);
   });
 
+  it("skips the days before a line's start, but not in later months", () => {
+    const r = needUntil({
+      ...base,
+      today: "2026-10-28",
+      until: "2026-11-03",
+      // A Oct line from the 30th, used for November too (no November budget yet).
+      budget: [line({ month: "2026-10-01", categoryId: "travel", name: "Travel", rateMinor: 10_00, ratePeriod: "day", startsOn: "2026-10-30" })],
+    });
+    expect(r.lines[0]).toMatchObject({ amountMinor: 50_00, units: 5 }); // 30 Oct – 3 Nov
+  });
+
   it("applies what-ifs without saving anything", () => {
     const input = { ...base, budget: [line({ categoryId: "travel", rateMinor: 30_00, ratePeriod: "weekday" as const })] };
     const r = needUntil({ ...input, overrides: new Map([["travel", 40_00]]) });
@@ -158,6 +177,13 @@ describe("how much we need until a date", () => {
   it("offers this Friday and the end of the month", () => {
     expect(quickDates("2026-11-02")).toEqual({ friday: "2026-11-06", monthEnd: "2026-11-30" }); // Monday
     expect(quickDates("2026-11-06").friday).toBe("2026-11-13"); // on a Friday: next one
+  });
+});
+
+describe("pace marker", () => {
+  it("runs from a line's start day", () => {
+    expect(monthElapsedPercent("2026-10-28", "2026-10-01", "2026-10-25")).toBeCloseTo(57.1, 1); // 4 of 7 days
+    expect(monthElapsedPercent("2026-10-28", "2026-10-01", null)).toBeCloseTo(90.3, 1); // 28 of 31
   });
 });
 
