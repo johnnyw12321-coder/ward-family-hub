@@ -150,6 +150,12 @@ export function shortMonth(date: CalendarDate): string {
   return MONTHS_SHORT[parts(date)[1] - 1];
 }
 
+/** "25 Oct" */
+export function dayAndMonth(date: CalendarDate): string {
+  const [, m, d] = parts(date);
+  return `${d} ${MONTHS_SHORT[m - 1]}`;
+}
+
 export function weekday(date: CalendarDate): number {
   return toUtc(date).getUTCDay();
 }

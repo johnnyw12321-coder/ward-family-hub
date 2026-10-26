@@ -173,8 +173,10 @@ export const allocationSchema = z.object({
   amount: nonNegativeMoney.refine((v) => v !== "", "Enter an amount"),
   /** What the amount is per: "month" is a plain monthly budget; the rest are rates. */
   ratePeriod: z.enum(["month", "week", "weekday", "day"]),
+  /** A rate line for only the rest of the month: the day it starts (in the month). */
+  startsOn: calendarDate.nullable(),
   carryForward: z.boolean(),
-});
+}).refine((v) => !v.startsOn || v.startsOn.slice(0, 7) === v.month.slice(0, 7), { path: ["startsOn"], message: "The start day must be in this month" });
 export type AllocationInput = z.infer<typeof allocationSchema>;
 
 export const transactionFiltersSchema = z.object({

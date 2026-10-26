@@ -490,15 +490,18 @@ export async function saveAllocation(raw: unknown): Promise<ActionResult> {
   }
   const entered = parseMoney(v.amount) ?? 0;
   const rate = v.ratePeriod === "month" ? null : { rate_minor: entered, rate_period: v.ratePeriod };
+  // Only a rate can cover part of the month; starting on the 1st is the whole month.
+  const startsOn = rate && v.startsOn && v.startsOn !== v.month ? v.startsOn : null;
   const { error } = await ctx.supabase.from("budget_allocations").upsert(
     {
       household_id: ctx.household.id,
       budget_id: budget.data.id,
       category_id: v.categoryId,
-      // A rate's monthly amount is worked out for this month's days.
-      amount_minor: rate ? rateForMonth(entered, v.ratePeriod, v.month) : entered,
+      // A rate's monthly amount is worked out for this month's days (from its start day).
+      amount_minor: rate ? rateForMonth(entered, v.ratePeriod, v.month, startsOn) : entered,
       rate_minor: rate?.rate_minor ?? null,
       rate_period: rate?.rate_period ?? null,
+      starts_on: startsOn,
       carry_forward: v.carryForward,
     },
     { onConflict: "budget_id,category_id" },

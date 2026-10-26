@@ -151,6 +151,8 @@ export type BudgetProgressRow = {
   /** Set when the line was entered as a rate; allocated_minor is the month's share of it. */
   rate_minor: Minor | null;
   rate_period: "day" | "weekday" | "week" | null;
+  /** A rate line for only the rest of the month starts on this day. */
+  starts_on: CalendarDate | null;
 };
 
 export type SummaryRow = {

@@ -13,14 +13,15 @@ import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/
 import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
 import { formatMoney, currencySymbol, parseMoney } from "@/lib/money";
-import { daysInMonth, rateForMonth, weekdaysBetween } from "../until";
-import { monthEnd, monthLabel } from "@/lib/dates";
+import { rateForMonth, weekdaysBetween } from "../until";
+import { compareDates, dayAndMonth, diffDays, monthEnd, monthLabel, monthStart, type CalendarDate } from "@/lib/dates";
 import { copyBudget, deleteAllocation, saveAllocation } from "../actions";
 import { allocationSchema, type AllocationInput } from "../schemas";
 import type { Category } from "../types";
 
 function AllocationForm({
   month,
+  today,
   categories,
   initial,
   currency,
@@ -28,6 +29,7 @@ function AllocationForm({
   onDone,
 }: {
   month: string;
+  today: CalendarDate;
   categories: Category[];
   initial?: Partial<AllocationInput>;
   currency: string;
@@ -37,21 +39,25 @@ function AllocationForm({
   const [pending, start] = useTransition();
   const form = useForm<AllocationInput>({
     resolver: zodResolver(allocationSchema),
-    defaultValues: { month, categoryId: "", amount: "", ratePeriod: "month", carryForward: false, ...initial },
+    defaultValues: { month, categoryId: "", amount: "", ratePeriod: "month", startsOn: null, carryForward: false, ...initial },
   });
   const err = form.formState.errors;
-  const [amount, ratePeriod] = useWatch({ control: form.control, name: ["amount", "ratePeriod"] });
+  const [amount, ratePeriod, startsOn] = useWatch({ control: form.control, name: ["amount", "ratePeriod", "startsOn"] });
   const entered = parseMoney(amount ?? "", currency);
   const monthName = monthLabel(month).split(" ")[0];
+  // Part-way through this month, a rate can cover just the rest of it (from today).
+  const restStart = initial?.startsOn ?? (monthStart(today) === month && compareDates(today, month) > 0 ? today : null);
+  const from = ratePeriod !== "month" && startsOn ? startsOn : month;
+  const days = diffDays(monthEnd(month), from) + 1;
   const preview =
     entered !== null && ratePeriod !== "month"
-      ? `${formatMoney(rateForMonth(entered, ratePeriod, month), { currency })} for ${monthName} (${
+      ? `${formatMoney(rateForMonth(entered, ratePeriod, month, from), { currency })} for ${from === month ? monthName : `the rest of ${monthName}`} (${
           ratePeriod === "weekday"
-            ? `${weekdaysBetween(month, monthEnd(month))} weekdays`
+            ? `${weekdaysBetween(from, monthEnd(month))} weekdays`
             : ratePeriod === "day"
-              ? `${daysInMonth(month)} days`
-              : `about ${(Math.round((daysInMonth(month) / 7) * 10) / 10).toLocaleString("en-GB")} weeks`
-        })`
+              ? `${days} days`
+              : `about ${(Math.round((days / 7) * 10) / 10).toLocaleString("en-GB")} weeks`
+        }${from === month ? "" : ` from ${dayAndMonth(from)}`})`
       : null;
   const parents = categories.filter((c) => !c.parent_id);
   const editing = Boolean(initial?.categoryId);
@@ -61,7 +67,7 @@ function AllocationForm({
       className="space-y-5"
       onSubmit={form.handleSubmit((v) =>
         start(async () => {
-          const r = await saveAllocation(v);
+          const r = await saveAllocation({ ...v, startsOn: v.ratePeriod === "month" ? null : v.startsOn });
           if (!r.ok) {
             toast.error(r.error);
             return;
@@ -129,6 +135,20 @@ function AllocationForm({
         <FieldDescription className="-mt-2">
           {preview ?? "Spending you think of by the week or day, like gas or travel to work? Choose it under Per."}
         </FieldDescription>
+        {ratePeriod !== "month" && restStart ? (
+          <Controller
+            control={form.control}
+            name="startsOn"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <Checkbox id="al-rest" checked={Boolean(field.value)} onCheckedChange={(v) => field.onChange(v === true ? restStart : null)} />
+                <FieldLabel htmlFor="al-rest" className="font-normal">
+                  Only the rest of {monthName} (from {dayAndMonth(restStart)})
+                </FieldLabel>
+              </Field>
+            )}
+          />
+        ) : null}
         <Controller
           control={form.control}
           name="carryForward"
@@ -174,11 +194,13 @@ function AllocationForm({
 
 export function AddAllocationButton({
   month,
+  today,
   categories,
   currency,
   label = "Add budget line",
 }: {
   month: string;
+  today: CalendarDate;
   categories: Category[];
   currency: string;
   label?: string;
@@ -190,7 +212,7 @@ export function AddAllocationButton({
         <PlusIcon data-icon="inline-start" /> {label}
       </Button>
       <ResponsiveModal open={open} onOpenChange={setOpen} title="Add budget line">
-        {open ? <AllocationForm month={month} categories={categories} currency={currency} onDone={() => setOpen(false)} /> : null}
+        {open ? <AllocationForm month={month} today={today} categories={categories} currency={currency} onDone={() => setOpen(false)} /> : null}
       </ResponsiveModal>
     </>
   );
@@ -198,6 +220,7 @@ export function AddAllocationButton({
 
 export function EditAllocationButton({
   month,
+  today,
   categories,
   currency,
   allocationId,
@@ -205,6 +228,7 @@ export function EditAllocationButton({
   name,
 }: {
   month: string;
+  today: CalendarDate;
   categories: Category[];
   currency: string;
   allocationId: string;
@@ -221,6 +245,7 @@ export function EditAllocationButton({
         {open ? (
           <AllocationForm
             month={month}
+            today={today}
             categories={categories}
             currency={currency}
             initial={initial}
